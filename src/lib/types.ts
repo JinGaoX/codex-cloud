@@ -103,6 +103,10 @@ export interface QualityProbeResult {
 export interface SearchResponse {
   list: SearchResultItem[];
   failures: { sourceKey: string; error: string; timedOut?: boolean }[];
+  /** 客户端收到的流未完整结束；已收到的源结果仍可使用。 */
+  partial?: boolean;
+  /** 搜索传输错误，不归因于某个影视源，也不写入源健康度。 */
+  error?: string;
 }
 
 /** /api/search?stream=1 的 NDJSON 事件：逐源推送 + 最终聚合 */

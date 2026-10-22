@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { buildImageCandidates, buildImageUrl } from './utils';
+import { buildImageCandidates, buildImageUrl, buildWatchUrl } from './utils';
+
+describe('watch URL restore position', () => {
+  it('preserves a finite positive position when switching sources', () => {
+    const url = buildWatchUrl({ sourceKey: 'new-source', vodId: '42', index: 3, position: 127.9 });
+    const params = new URL(url, 'https://libretv.invalid').searchParams;
+    expect(params.get('position')).toBe('127');
+    expect(params.get('index')).toBe('3');
+    expect(params.get('source')).toBe('new-source');
+  });
+
+  it.each([undefined, 0, -5, NaN, Infinity])('does not persist an invalid position: %s', (position) => {
+    const url = buildWatchUrl({ sourceKey: 'source', position });
+    expect(new URL(url, 'https://libretv.invalid').searchParams.has('position')).toBe(false);
+  });
+});
 
 describe('buildImageUrl', () => {
   it('proxy 模式走查询串形式（路径形式会被 EdgeOne 等网关归一化破坏）', () => {

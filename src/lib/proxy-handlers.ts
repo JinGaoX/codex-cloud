@@ -96,8 +96,8 @@ export async function handleProxyRequest(req: Request, targetUrl: string): Promi
     try {
       const result = await fetchWithSafeRedirects(targetUrl, {
         headers,
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
+        signal: req.signal,
+      }, { headerTimeoutMs: TIMEOUT_MS });
       response = result.res;
       finalUrl = result.finalUrl;
       lastError = null;
@@ -116,7 +116,8 @@ export async function handleProxyRequest(req: Request, targetUrl: string): Promi
   const contentType = response.headers.get('content-type') || '';
   const isM3u8 =
     contentType.includes('mpegurl') || contentType.includes('x-mpegurl') ||
-    targetUrl.toLowerCase().endsWith('.m3u8');
+    new URL(finalUrl).pathname.toLowerCase().endsWith('.m3u8') ||
+    new URL(targetUrl).pathname.toLowerCase().endsWith('.m3u8');
 
   // m3u8 文本：重写为代理地址（以重定向后的最终 URL 为 base 解析相对地址）
   if (isM3u8) {
@@ -125,7 +126,7 @@ export async function handleProxyRequest(req: Request, targetUrl: string): Promi
       status: response.status,
       headers: {
         'Content-Type': 'application/vnd.apple.mpegurl',
-        'Cache-Control': 'no-store',
+        'Cache-Control': 'private, no-store',
         'Access-Control-Allow-Origin': '*',
       },
     });
@@ -137,11 +138,18 @@ export async function handleProxyRequest(req: Request, targetUrl: string): Promi
     const v = response.headers.get(name);
     if (v) outHeaders.set(name, v);
   }
-  // fetch 会自动解压，转发时必须去掉长度相关头避免浏览器二次解压
-  // 图片基本不变：长缓存交给浏览器与边缘 CDN（分片 / key 仍保守 1 小时）
+  // MP4 Range 响应保留未压缩实体的长度，便于 Safari 判断可拖动范围。
+  // fetch 自动解压后原始 content-length 不再准确，此时不能透传。
+  if (!response.headers.get('content-encoding')) {
+    const length = response.headers.get('content-length');
+    if (length) outHeaders.set('content-length', length);
+  }
+  // 签名播放地址、分片和 key 属于登录后的资源，不能落入共享 CDN 缓存。
   outHeaders.set(
     'Cache-Control',
-    contentType.startsWith('image/') ? 'public, max-age=2592000' : 'public, max-age=3600'
+    looksLikeImageUrl(targetUrl) && contentType.startsWith('image/')
+      ? 'public, max-age=2592000'
+      : 'private, no-store'
   );
   outHeaders.set('Access-Control-Allow-Origin', '*');
 
@@ -154,10 +162,9 @@ export async function handleProxyRequest(req: Request, targetUrl: string): Promi
 /**
  * 直播流专用长连接代理（不复用 /api/proxy）：
  *
- * /api/proxy 的 AbortSignal.timeout(TIMEOUT_MS) 作用于整个响应流，
- * 8 秒后即切断长连接——对 HTTP-FLV（单一无限长连接）是致命的。
- * 本路由改为「仅对响应头等待设超时」（fetchWithSafeRedirects 的
- * headerTimeoutMs）：fetch 拿到响应头后立即清除计时器，
+ * 点播与直播现均使用「仅对响应头等待设超时」（fetchWithSafeRedirects 的
+ * headerTimeoutMs），避免在 8 秒后截断完整媒体流。直播单独设置 15 秒等待：
+ * fetch 拿到响应头后立即清除计时器，
  * 之后 body 无限时长流式透传，直到客户端断开。
  *
  * - 不重试（重试对直播无意义）；

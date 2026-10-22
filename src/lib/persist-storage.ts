@@ -31,10 +31,12 @@ function flush(): void {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('visibilitychange', () => {
+  document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
   });
   window.addEventListener('beforeunload', flush);
+  // iOS 切后台或进入往返缓存时通常不发 beforeunload。
+  window.addEventListener('pagehide', flush);
 }
 
 /**

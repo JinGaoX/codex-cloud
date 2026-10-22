@@ -1,5 +1,14 @@
 # LibreTV
 
+> **私人移动版开发分支：`2.20.2-personal.1`**，基于官方 `2.20.2`，保留 AGPL-3.0-or-later。
+> 已补充 iPhone PWA、原生 HLS/MP4、点播收藏与完整备份恢复；未内置影视源。
+> [架构与方案比较](docs/private-app-architecture.zh-CN.md) · [部署步骤](docs/deployment.zh-CN.md) ·
+> [iPhone 验收](docs/iphone-test-checklist.zh-CN.md) · [品牌配置](docs/PWA-AND-BRANDING.zh-CN.md) ·
+> [修改记录](CHANGELOG.private.zh-CN.md) · [验证结果](docs/validation.zh-CN.md) · [上游来源](UPSTREAM.md)
+>
+> 下方官网和演示站属于上游，不是本私人版本的已部署地址。项目需要云端 Next.js API，
+> 不能仅把页面上传到静态空间。当前长期部署和 iPhone 真机播放仍待完成。
+
 LibreTV Next.js 迁移版：免费在线视频聚合搜索与观看平台。基于 Next.js 15（App Router）+ TypeScript + Tailwind CSS，播放内核为 ArtPlayer + hls.js，支持亮暗双主题。
 
 > 🏠 **官网**：[LibreTV 官网](https://libretv.is-an.org/)

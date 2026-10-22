@@ -1,8 +1,9 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { SourceConfig } from './types';
+import type { SearchResultItem, SourceConfig } from './types';
 // 仅类型引入：store.ts 运行时会引用本模块，反向只取类型不会形成运行时循环
 import type { LiveProbeEntry } from './store';
 import { PERSIST_KEY, flushPendingPersist } from './persist-storage';
+import { parseConfigBackup } from './config-backup';
 
 /**
  * IndexedDB 持久化（替代旧版 localStorage 数据库）：
@@ -37,6 +38,12 @@ export interface ProgressEntry {
 
 export interface SearchHistoryEntry {
   text: string;
+  timestamp: number;
+}
+
+/** 收藏只保存影片定位信息；播放时重新读取源站详情，不保存易过期的播放链接。 */
+export interface FavoriteEntry extends SearchResultItem {
+  id: string;
   timestamp: number;
 }
 
@@ -77,6 +84,7 @@ export const db = new Dexie('libretv') as Dexie & {
   liveProbe: EntityTable<LiveProbeEntry & { url: string }, 'url'>;
   segmentMeta: EntityTable<SegmentMetaEntry, 'key'>;
   downloads: EntityTable<DownloadTaskEntry, 'id'>;
+  favorites: EntityTable<FavoriteEntry, 'id'>;
 };
 
 db.version(1).stores({
@@ -96,8 +104,23 @@ db.version(3).stores({
   downloads: 'id, createdAt',
 });
 
+// v4 仅新增点播收藏表，保留既有历史、进度与设置。
+db.version(4).stores({ favorites: 'id, timestamp' });
+
 export const MAX_HISTORY = 100;
 export const MAX_SEARCH_HISTORY = 10;
+
+export function favoriteKeyOf(sourceKey: string, vodId: string): string {
+  return JSON.stringify([sourceKey, vodId]);
+}
+
+export async function addFavorite(item: SearchResultItem): Promise<void> {
+  await db.favorites.put({ ...item, id: favoriteKeyOf(item.sourceKey, item.vodId), timestamp: Date.now() });
+}
+
+export async function removeFavorite(sourceKey: string, vodId: string): Promise<void> {
+  await db.favorites.delete(favoriteKeyOf(sourceKey, vodId));
+}
 
 export async function upsertHistory(entry: Omit<HistoryEntry, 'id'>): Promise<void> {
   const id = `${entry.sourceKey}_${entry.vodId}`;
@@ -211,57 +234,58 @@ export async function clearLiveProbeResultsDb(): Promise<void> {
 export async function exportConfig(): Promise<string> {
   // 导出前 flush：把节流缓冲中的最新设置落盘，避免导出的是 800ms 前的旧快照
   flushPendingPersist();
-  const history = await db.history.toArray();
+  const [history, progress, favorites] = await Promise.all([
+    db.history.toArray(), db.progress.toArray(), db.favorites.toArray(),
+  ]);
   const settings = localStorage.getItem(PERSIST_KEY);
 
   const data: Record<string, unknown> = {
     viewingHistory: JSON.stringify(history),
+    playbackProgress: JSON.stringify(progress),
+    favorites: JSON.stringify(favorites),
   };
   if (settings) data[PERSIST_KEY] = settings;
 
   return JSON.stringify({
     name: 'LibreTV-Settings',
     time: Date.now().toString(),
-    cfgVer: '2.0.0',
+    cfgVer: '2.1.0',
     data,
   });
 }
 
 export async function importConfig(content: string): Promise<void> {
-  const config = JSON.parse(content) as {
-    name?: string;
-    data?: Record<string, string>;
-  };
-  if (config.name !== 'LibreTV-Settings') throw new Error('配置文件格式不正确');
-  const data = config.data || {};
-
-  if (typeof data[PERSIST_KEY] === 'string') {
-    // 关键：先 flush 节流缓冲中的旧状态再写导入配置，否则缓冲会在
-    // 之后 flush 时用导入前的旧状态覆盖刚写入的配置（导入静默丢失）
-    flushPendingPersist();
-    localStorage.setItem(PERSIST_KEY, data[PERSIST_KEY]);
-  }
-
-  if (typeof data['viewingHistory'] === 'string') {
-    // 兼容旧版历史结构（含全集 URL 列表），只迁移定位信息
-    const legacy = JSON.parse(data['viewingHistory']) as Record<string, unknown>[];
-    for (const item of legacy.slice(0, MAX_HISTORY)) {
-      const sourceKey = String(item.sourceCode || item.sourceName || '');
-      const vodId = String(item.vod_id || '');
-      const title = String(item.title || '未知视频');
-      if (!sourceKey || !vodId) continue;
-      const totalEpisodes = Array.isArray(item.episodes) ? item.episodes.length : 0;
-      await upsertHistory({
-        sourceKey,
-        vodId,
-        title,
-        episodeIndex: typeof item.episodeIndex === 'number' ? item.episodeIndex : 0,
-        totalEpisodes,
-        playbackPosition: typeof item.playbackPosition === 'number' ? item.playbackPosition : 0,
-        duration: typeof item.duration === 'number' ? item.duration : 0,
-        timestamp: typeof item.timestamp === 'number' ? item.timestamp : Date.now(),
-      });
+  // 先验证全部片段，损坏文件不会先覆盖设置再报错。
+  const backup = parseConfigBackup(content);
+  flushPendingPersist();
+  const previousSettings = localStorage.getItem(PERSIST_KEY);
+  if (backup.settings !== undefined) localStorage.setItem(PERSIST_KEY, backup.settings);
+  try {
+    await db.transaction('rw', [db.history, db.progress, db.favorites], async () => {
+      if (backup.history !== undefined) {
+        await db.history.clear();
+        await db.history.bulkPut(backup.history);
+        // 旧备份没有逐集进度时，从历史恢复当前一集，避免旧进度覆盖导入值。
+        await db.progress.clear();
+        await db.progress.bulkPut(backup.progress ?? backup.history
+          .filter((item) => item.duration > 0 && item.playbackPosition >= 1)
+          .map((item) => ({ key: progressKeyOf(item.sourceKey, item.vodId, item.episodeIndex),
+            position: item.playbackPosition, duration: item.duration, updatedAt: item.timestamp })));
+      } else if (backup.progress !== undefined) {
+        await db.progress.clear();
+        await db.progress.bulkPut(backup.progress);
+      }
+      if (backup.favorites !== undefined) {
+        await db.favorites.clear();
+        await db.favorites.bulkPut(backup.favorites);
+      }
+    });
+  } catch (err) {
+    if (backup.settings !== undefined) {
+      if (previousSettings === null) localStorage.removeItem(PERSIST_KEY);
+      else localStorage.setItem(PERSIST_KEY, previousSettings);
     }
+    throw err;
   }
 }
 

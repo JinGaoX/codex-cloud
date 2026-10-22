@@ -27,5 +27,5 @@ export async function GET(req: Request) {
     defaultRecommendSource: getEnvRecommendSource() ?? null,
     // 部署者通过 DEFAULT_IMAGE_MODE 指定的封面图加载方式默认值（未配置时为 null）
     defaultImageMode: getEnvImageMode() ?? null,
-  });
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
 }

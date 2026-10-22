@@ -2,20 +2,21 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/header';
 import { RecommendSection } from '@/components/douban-section';
 import { DetailModal } from '@/components/detail-modal';
 import { AggregatedCard, aggregateResults } from '@/components/video-card';
 import { useAppStore, resolveSource, isInDisabledSubscription, isSourceDisabled } from '@/lib/store';
 import { api } from '@/lib/client-api';
-import type { SearchResultItem, SourceSearchOutcome } from '@/lib/types';
+import type { SearchResponse, SearchResultItem, SourceSearchOutcome } from '@/lib/types';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search-history';
 import { cn, formatDisableTtl, validateSourceUrl } from '@/lib/utils';
 import { useToast } from '@/components/toast';
 import { EmptyState } from '@/components/states';
 import { Icon } from '@/components/icon';
 import { SiteFooter } from '@/components/site-footer';
+import { APP_BRAND } from '@/lib/app-brand';
 
 /**
  * 首页：搜索（URL ?s= 驱动，可后退/分享）+ 豆瓣推荐。
@@ -35,6 +36,7 @@ export default function HomePage() {
 function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const urlQuery = searchParams.get('s') || '';
   // 精确订阅所需字段（对齐 live 页的做法）：搜索流式期间逐源写健康度、
@@ -48,7 +50,7 @@ function HomeContent() {
   const [input, setInput] = useState(urlQuery);
   const [detailItem, setDetailItem] = useState<SearchResultItem | null>(null);
   /** 流式搜索中已结算的源（data 就绪前用于增量渲染） */
-  const [streamedOutcomes, setStreamedOutcomes] = useState<SourceSearchOutcome[]>([]);
+  const [streamedSearch, setStreamedSearch] = useState<{ key: string; outcomes: SourceSearchOutcome[] }>({ key: '', outcomes: [] });
   const inputRef = useRef<HTMLInputElement>(null);
 
   // URL 驱动搜索：?s= 变化时回填输入框
@@ -90,16 +92,28 @@ function HomeContent() {
     [selectedKeys, sourceHealth, subscriptions]
   );
 
+  // 同一 key 的 API 地址/名称编辑后也应重新搜索，避免沿用 5 分钟前的旧源结果。
+  const searchQueryKey = ['search', urlQuery, selectedKeys, yellowFilter,
+    selectedKeys.map((key) => resolveSource({ customAPIs, envSources }, key))];
+  const searchRequestKey = JSON.stringify(searchQueryKey);
+  const streamedOutcomes = useMemo(
+    () => streamedSearch.key === searchRequestKey ? streamedSearch.outcomes : [],
+    [streamedSearch, searchRequestKey]
+  );
   const searchQuery = useQuery({
-    queryKey: ['search', urlQuery, selectedKeys, yellowFilter],
+    queryKey: searchQueryKey,
     // 与 runSearch 的截断规则保持一致：顶栏搜索 / 手动构造长链接不会绕过上限
-    queryFn: ({ signal }) => {
-      setStreamedOutcomes([]);
-      return api.search(urlQuery.slice(0, 100), selectedSources, yellowFilter, {
+    queryFn: async ({ signal }) => {
+      const previous = queryClient.getQueryData<SearchResponse>(searchQueryKey);
+      setStreamedSearch({ key: searchRequestKey, outcomes: [] });
+      const result = await api.search(urlQuery.slice(0, 100), selectedSources, yellowFilter, {
         signal,
         // 逐源结算即更新：结果边搜边渲染，同时滚动健康度
         onSource: (outcome) => {
-          setStreamedOutcomes((prev) => [...prev, outcome]);
+          if (signal.aborted) return;
+          setStreamedSearch((prev) => prev.key === searchRequestKey
+            ? { key: searchRequestKey, outcomes: [...prev.outcomes, outcome] }
+            : prev);
           for (const ev of useAppStore.getState().recordSourceHealth([outcome])) {
             toast(
               ev.permanent
@@ -110,10 +124,18 @@ function HomeContent() {
           }
         },
       });
+      // 对同一搜索重试时，传输中断不能抹掉上次已经展示的影片。
+      if (result.partial && previous) {
+        const items = new Map(previous.list.map((item) => [JSON.stringify([item.sourceKey, item.vodId]), item]));
+        for (const item of result.list) items.set(JSON.stringify([item.sourceKey, item.vodId]), item);
+        return { ...result, list: [...items.values()] };
+      }
+      return result;
     },
     enabled: Boolean(urlQuery) && selectedSources.length > 0,
     // 5 分钟内从播放页返回时直接使用缓存，不重新搜索（服务端另有 60s 结果缓存兜底）
     staleTime: 300_000,
+    retry: false,
   });
 
   // 最近搜索改为搜索框下拉（聚焦展开、按输入过滤），不再常驻首屏
@@ -147,9 +169,12 @@ function HomeContent() {
     [streamedOutcomes]
   );
   const list = useMemo(
-    () => searchQuery.data?.list ?? (isSearching ? streamedList : []),
-    [searchQuery.data, isSearching, streamedList]
+    () => searchQuery.data?.list ?? streamedList,
+    [searchQuery.data, streamedList]
   );
+  const searchWarning = searchQuery.error instanceof Error
+    ? searchQuery.error.message
+    : searchQuery.data?.error;
   const failures =
     searchQuery.data?.failures ??
     streamedOutcomes
@@ -184,10 +209,10 @@ function HomeContent() {
         <section className={cn('flex flex-col items-center', urlQuery ? 'mb-6' : 'mt-8 mb-8')}>
           {!urlQuery && (
             <header className="text-center mb-6">
-              <h1 className="text-4xl sm:text-5xl font-bold brand-gradient">LibreTV</h1>
+              <h1 className="text-4xl sm:text-5xl font-bold brand-gradient">{APP_BRAND.name}</h1>
             </header>
           )}
-          {urlQuery && <h1 className="sr-only">LibreTV 视频搜索</h1>}
+          {urlQuery && <h1 className="sr-only">{APP_BRAND.name} 视频搜索</h1>}
           {/* 定位容器比胶囊宽一圈：浮层按它的宽度对齐，接缝处不会与胶囊边框错位 1px */}
           <div ref={searchHistory.containerRef} className="relative w-full max-w-2xl">
             <form
@@ -300,6 +325,16 @@ function HomeContent() {
               </h2>
             </div>
 
+            {searchWarning && selectedSources.length > 0 && (
+              <div role="status" className="mb-3 text-sm bg-chip rounded-lg px-3 py-2 flex flex-wrap items-center gap-2">
+                <span className="flex-1 text-warning">{searchWarning}</span>
+                <button className="btn-ghost btn-sm" disabled={searchQuery.isFetching}
+                  onClick={() => void searchQuery.refetch()}>
+                  {searchQuery.isFetching ? '正在重试…' : '重试搜索'}
+                </button>
+              </div>
+            )}
+
             {failures.length > 0 && (
               <div className="mb-3 text-xs bg-chip rounded-lg px-3 py-2 flex flex-wrap gap-x-3 gap-y-1">
                 <span className="text-faint">{isSearching ? '以下源暂时无响应：' : '部分点播源请求失败：'}</span>
@@ -309,6 +344,12 @@ function HomeContent() {
                     {f.timedOut ? ' 超时' : ''}
                   </span>
                 ))}
+                {!searchWarning && (
+                  <button className="text-accent underline" disabled={searchQuery.isFetching}
+                    onClick={() => void searchQuery.refetch()}>
+                    {searchQuery.isFetching ? '正在重试…' : '重试搜索'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -356,8 +397,8 @@ function HomeContent() {
             ) : (
               <EmptyState
                 icon="search"
-                title="没有找到匹配的结果"
-                description="请尝试其他关键词或更换点播源"
+                title={searchWarning ? '搜索暂未完成' : '没有找到匹配的结果'}
+                description={searchWarning ? '请重试搜索，或在设置中检查点播源' : '请尝试其他关键词或更换点播源'}
                 className="!py-16"
               />
             )}

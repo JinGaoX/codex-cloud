@@ -41,12 +41,14 @@ export function SwitchSourceModal({
   currentSourceKey,
   currentVodId,
   currentIndex,
+  getCurrentPosition,
   onClose,
 }: {
   currentTitle: string;
   currentSourceKey: string;
   currentVodId: string;
   currentIndex: number;
+  getCurrentPosition?: () => number;
   onClose: () => void;
 }) {
   const store = useAppStore();
@@ -255,6 +257,8 @@ export function SwitchSourceModal({
         title: c.result.name || currentTitle,
         sourceUrl: c.source.url,
         detail: c.source.detail,
+        // Different releases may have different timing; a bounded restore is applied by the player.
+        position: targetIndex === currentIndex ? getCurrentPosition?.() : undefined,
       })
     );
   };

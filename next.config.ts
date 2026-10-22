@@ -22,6 +22,21 @@ const nextConfig: NextConfig = {
   env: { APP_VERSION: readAppVersion() },
   // 采集站/豆瓣等上游地址在运行时由用户配置，构建期无法枚举，关闭图片优化改用 <img>
   images: { unoptimized: true },
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
+      },
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

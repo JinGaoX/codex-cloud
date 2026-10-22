@@ -34,8 +34,8 @@ export interface SafeRedirectOptions {
    */
   allowPrivate?: boolean;
   /**
-   * 仅对「响应头等待」限时（直播流专用）：对整个 body 限时会切断
-   * HTTP-FLV 单一无限长连接，故拿到响应头后立即清除计时器，body 不再受限。
+   * 仅对「响应头等待」限时（媒体流代理）：对整个 body 限时会切断
+   * MP4 / HTTP-FLV 长连接，故拿到响应头后立即清除计时器，body 不再受限。
    * 超时触发即整链失败（内部 controller 已 abort，对齐直播路由原行为）。
    */
   headerTimeoutMs?: number;

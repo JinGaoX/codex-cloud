@@ -3,6 +3,12 @@ import { POST } from './route';
 import { SESSION_COOKIE, signSession } from '@/lib/auth';
 import type { SearchResponse, SearchStreamEvent, SourceConfig } from '@/lib/types';
 
+// mock fetch 不会拦截 SSRF 预检中的 dns.lookup；测试域名也必须隔离 DNS，
+// 避免离线/云端 DNS 超时拖慢测试。字面量内网拒绝仍执行真实 SSRF 规则。
+vi.mock('node:dns/promises', () => ({
+  default: { lookup: vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]) },
+}));
+
 /**
  * 聚合搜索接口单测：跨源聚合、同源去重、精确命中置顶、成人内容过滤、
  * 失败源不影响整体、SSRF 字面量拒绝。上游一律 mock fetch，无真实网络。

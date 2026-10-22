@@ -120,7 +120,7 @@ export const api = {
   /**
    * 聚合搜索。传入 onSource 时走 /api/search?stream=1 的 NDJSON 流：
    * 每个源结算立即回调（健康源结果不再等坏源超时），最终以聚合结果 resolve。
-   * 未传 onSource 或流不可用时回退为一次性 JSON 请求。
+   * 未传 onSource 时使用一次性 JSON 请求；流中断保留部分结果并返回警告。
    */
   search: async (
     wd: string,
@@ -328,25 +328,53 @@ async function searchStream(
   onSource: (outcome: SourceSearchOutcome) => void,
   signal?: AbortSignal
 ): Promise<SearchResponse> {
-  const res = await fetch('/api/search?stream=1', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wd, sources, filterAdult }),
-    signal,
-  });
-    throwForAuthStatus(res);
-    if (!res.ok || !res.body) throw new ApiError(`请求失败 (${res.status})`, res.status);
+  let res: Response;
+  try {
+    res = await fetch('/api/search?stream=1', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wd, sources, filterAdult }),
+      signal,
+    });
+  } catch (err) {
+    if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) throw err;
+    throw new ApiError('网络请求失败，请检查网络连接后重试', 0);
+  }
+  throwForAuthStatus(res);
+  if (!res.ok || !res.body) throw new ApiError(`搜索请求失败 (${res.status})，请重试`, res.status);
 
-    // done 事件缺失（流被截断）时退化为空结果，不让整次搜索报错
-    let final: SearchResponse = { list: [], failures: [] };
+  const outcomes = new Map<string, SourceSearchOutcome>();
+  let final: SearchResponse | undefined;
+  try {
     await consumeNdjson<SearchStreamEvent>(res, (event) => {
       if (event.type === 'source') {
+        outcomes.set(event.sourceKey, event);
         onSource(event);
       } else if (event.type === 'done') {
         final = { list: event.list, failures: event.failures };
       }
     });
-    return final;
+  } catch (err) {
+    // 切换关键词/离开页面等主动取消必须交回 React Query，不能留下假成功缓存。
+    if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) throw err;
+    // done 已经完整收到时，尾部连接错误不影响最终结果。
   }
+  if (signal?.aborted) throw signal.reason ?? new DOMException('已取消', 'AbortError');
+  if (final) return final;
+  if (outcomes.size === 0) throw new ApiError('搜索连接中断，未收到完整结果，请重试', 0);
+
+  // 只合并服务端已经筛选好的 source 结果；连接故障不应算作未知源的失败。
+  const seen = new Set<string>();
+  const list = [...outcomes.values()].filter((outcome) => outcome.ok).flatMap((outcome) => outcome.list)
+    .filter((item) => {
+      const key = JSON.stringify([item.sourceKey, item.vodId]);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  const failures = [...outcomes.values()].filter((outcome) => !outcome.ok)
+    .map((outcome) => ({ sourceKey: outcome.sourceKey, error: outcome.error || '请求失败', timedOut: outcome.timedOut }));
+  return { list, failures, partial: true, error: '搜索连接中断，已保留收到的结果；请重试补全。' };
+}
 
 export type { SearchResponse, SearchResultItem };

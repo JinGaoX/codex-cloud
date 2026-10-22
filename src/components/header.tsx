@@ -6,6 +6,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ThemeToggle } from './theme';
 import { SourceManagerDrawer } from './source-manager';
 import { HistoryPanel } from './history-panel';
+import { FavoritesPanel } from './favorites-panel';
+import { InstallAppButton } from './pwa-runtime';
+import { APP_BRAND } from '@/lib/app-brand';
 import { requestShowDownloadManager } from './download-manager';
 import { Icon } from './icon';
 import { SearchHistoryDropdown, useSearchHistory } from './search-history';
@@ -17,6 +20,7 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [query, setQuery] = useState('');
   // 与首页搜索框共用同一套「最近搜索」下拉逻辑
   const searchHistory = useSearchHistory(query);
@@ -39,9 +43,9 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
     <>
       <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur border-b border-line">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-          <Link href="/" aria-label="LibreTV 首页" className="flex items-center shrink-0">
+          <Link href="/" aria-label={`${APP_BRAND.name} 首页`} className="flex items-center shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/icon-512.png" alt="LibreTV" className="w-7 h-7 rounded-lg" />
+            <img src={APP_BRAND.icons.large} alt={APP_BRAND.name} className="w-7 h-7 rounded-lg" />
           </Link>
 
           {showSearch && (
@@ -100,16 +104,18 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
             <HeaderLink href="/live" active={pathname === '/live'}>
               直播
             </HeaderLink>
-            <HeaderLink href="/about" active={pathname === '/about'}>
-              关于
-            </HeaderLink>
+            <span className="hidden sm:contents"><HeaderLink href="/about" active={pathname === '/about'}>关于</HeaderLink></span>
             <ThemeToggle />
+            <InstallAppButton />
+            <IconButton label="我的收藏" onClick={() => setFavoritesOpen(true)}>
+              <Icon name="heart" />
+            </IconButton>
             <IconButton label="观看历史" onClick={() => setHistoryOpen(true)}>
               <Icon name="clock" />
             </IconButton>
-            <IconButton label="下载管理" onClick={requestShowDownloadManager}>
+            <span className="hidden sm:contents"><IconButton label="下载管理" onClick={requestShowDownloadManager}>
               <Icon name="download" />
-            </IconButton>
+            </IconButton></span>
             <IconButton label="设置" onClick={() => setSettingsOpen(true)}>
               <Icon name="gear" />
             </IconButton>
@@ -119,6 +125,7 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
 
       <SourceManagerDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      <FavoritesPanel open={favoritesOpen} onClose={() => setFavoritesOpen(false)} />
     </>
   );
 }

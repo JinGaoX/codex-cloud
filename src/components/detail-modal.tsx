@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client-api';
 import type { SearchResultItem, VideoDetail } from '@/lib/types';
@@ -10,7 +11,7 @@ import { SmartImage } from './smart-image';
 import { useAppStore, resolveSource } from '@/lib/store';
 import { useToast } from './toast';
 import { cn } from '@/lib/utils';
-import { addSearchHistory } from '@/lib/db';
+import { addSearchHistory, addFavorite, removeFavorite, favoriteKeyOf, db } from '@/lib/db';
 import { copyToClipboard } from '@/lib/clipboard';
 import { EmptyState, ErrorState, LoadingState } from './states';
 import { useFocusTrap } from './use-focus-trap';
@@ -32,6 +33,10 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   const [posterFailed, setPosterFailed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const favorite = useLiveQuery(
+    () => item ? db.favorites.get(favoriteKeyOf(item.sourceKey, item.vodId)).catch(() => undefined) : undefined,
+    [item?.sourceKey, item?.vodId]
+  );
 
   // 打开时把焦点移入弹窗、Tab 圈闭在弹窗内、关闭后归还焦点
   useFocusTrap(Boolean(item), panelRef);
@@ -63,18 +68,20 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
       return;
     }
     setLoading(true);
+    setDetail(null);
+    setReversed(false);
     setError('');
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     api
       .detail(item.vodId, source, controller.signal)
-      .then((d) => setDetail(d))
+      .then((d) => { if (!controller.signal.aborted) setDetail(d); })
       .catch((err) => {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) return;
         setError(err instanceof Error ? err.message : '获取详情失败');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item]);
@@ -114,6 +121,17 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
     else toast('复制失败，请检查浏览器权限', 'error');
   };
 
+  const toggleFavorite = async () => {
+    try {
+      if (favorite) await removeFavorite(item.sourceKey, item.vodId);
+      else {
+        const source = resolveSource(store, item.sourceKey);
+        await addFavorite({ ...item, sourceUrl: item.sourceUrl ?? source?.url });
+      }
+      toast(favorite ? '已取消收藏' : '已加入收藏', 'success');
+    } catch { toast('收藏保存失败，请检查浏览器存储空间', 'error'); }
+  };
+
   // 备注与卡片同源，同样归一化，避免同一部剧在两处显示不同文案
   const remarks = formatRemarks(info?.remarks);
   const metaRows = [
@@ -145,6 +163,10 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
             <h2 className="text-lg font-semibold text-content break-words">{item.name}</h2>
             <span className="text-sm text-faint">{item.sourceName}</span>
           </div>
+          <button className="btn-ghost btn-sm shrink-0" onClick={toggleFavorite} aria-pressed={Boolean(favorite)}>
+            <Icon name="heart" className="w-4 h-4" />
+            {favorite ? '已收藏' : '收藏'}
+          </button>
           <button
             className="p-1.5 rounded-md text-muted hover:text-content hover:bg-hover shrink-0"
             onClick={onClose}

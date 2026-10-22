@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth';
+import { APP_BRAND } from '@/lib/app-brand';
 
 /** 上游仓库最新 tag（即最新版本号），用于页脚的更新检测 */
 const UPSTREAM_TAGS_API = 'https://api.github.com/repos/LibreSpark/LibreTV/tags?per_page=1';
@@ -103,6 +104,8 @@ export function SiteFooter() {
         </a>
         {' · '}
         AGPL-3.0 License
+        {' · '}
+        <a href={APP_BRAND.sourceUrl} className="hover:text-accent">本修改版源码</a>
       </p>
     </footer>
   );

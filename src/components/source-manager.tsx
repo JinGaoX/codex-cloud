@@ -24,7 +24,7 @@ import type { SourceConfig } from '@/lib/types';
 import { useToast } from './toast';
 import { formatRelativeTime, hostnameOf, validateSourceUrl, cn } from '@/lib/utils';
 import { exportConfig, importConfig } from '@/lib/db';
-import { PERSIST_KEY } from '@/lib/persist-storage';
+import { PERSIST_KEY, flushPendingPersist } from '@/lib/persist-storage';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useAuth } from './auth';
 import { api } from '@/lib/client-api';
@@ -1120,8 +1120,11 @@ function ConfigIoPanel() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `LibreTV-Settings_${Date.now()}.json`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      a.remove();
+      // Safari 可能在 click 返回后才开始读取 Blob，不能立即撤销地址。
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast('配置已导出', 'success');
     } catch {
       toast('导出失败', 'error');
@@ -1141,9 +1144,10 @@ function ConfigIoPanel() {
     if (!pending) return;
     try {
       await importConfig(await pending.file.text());
-      setPending(null);
-      toast('配置导入成功，即将刷新页面', 'success');
-      setTimeout(() => window.location.reload(), 1500);
+      // 同步内存态，避免旧 store 的节流写入在刷新前覆盖刚导入的设置。
+      await useAppStore.persist.rehydrate();
+      flushPendingPersist();
+      window.location.reload();
     } catch (err) {
       toast(err instanceof Error ? err.message : '导入失败', 'error');
     }
@@ -1151,7 +1155,7 @@ function ConfigIoPanel() {
 
   return (
     <section>
-      <SectionTitle title="配置导入导出" hint="导出/导入包含数据源、订阅与偏好设置的整机配置" />
+      <SectionTitle title="配置导入导出" hint="包含数据源、订阅、偏好设置、收藏、观看历史与逐集进度；请妥善保管含私人源地址的备份" />
       <div className="flex gap-2">
         <button className="btn-ghost flex-1 text-xs" onClick={doExport}>
           导出配置
@@ -1176,7 +1180,7 @@ function ConfigIoPanel() {
         open={pending !== null}
         danger
         title="导入配置并覆盖当前数据？"
-        message={pending ? `${pending.summary}。导入后将立即刷新页面，当前设备上的配置与观看历史会被覆盖。` : undefined}
+        message={pending ? `${pending.summary}。文件包含的数据类别会覆盖本机对应数据；旧版文件未包含的收藏会保留。导入后刷新页面。` : undefined}
         confirmLabel="导入并覆盖"
         onCancel={() => setPending(null)}
         onConfirm={confirmImport}
@@ -1215,6 +1219,13 @@ function summarizeConfig(text: string): string {
       if (Array.isArray(h)) parts.push(`${h.length} 条观看历史`);
     } catch {
       /* 忽略 */
+    }
+  }
+  for (const [key, label] of [['favorites', '条收藏'], ['playbackProgress', '条逐集进度']] as const) {
+    const raw = cfg.data?.[key];
+    if (typeof raw === 'string') {
+      try { const entries: unknown = JSON.parse(raw); if (Array.isArray(entries)) parts.push(`${entries.length} ${label}`); }
+      catch { /* 导入时会完整验证，预览只展示可读取的类别 */ }
     }
   }
   return parts.length > 0 ? `该文件包含 ${parts.join('、')}` : '该文件未包含可导入的数据';

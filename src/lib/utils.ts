@@ -101,6 +101,7 @@ export function buildWatchUrl(params: {
   episodeUrl?: string;
   sourceUrl?: string;
   detail?: string;
+  position?: number;
 }): string {
   const sp = new URLSearchParams();
   sp.set('source', params.sourceKey);
@@ -110,5 +111,8 @@ export function buildWatchUrl(params: {
   if (params.episodeUrl) sp.set('url', params.episodeUrl);
   if (params.sourceUrl) sp.set('sourceUrl', params.sourceUrl);
   if (params.detail) sp.set('detail', params.detail);
+  if (typeof params.position === 'number' && Number.isFinite(params.position) && params.position > 0) {
+    sp.set('position', String(Math.floor(params.position)));
+  }
   return `/watch?${sp.toString()}`;
 }

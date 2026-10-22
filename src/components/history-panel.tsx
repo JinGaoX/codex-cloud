@@ -143,7 +143,7 @@ function HistoryItem({ item }: { item: HistoryEntry }) {
   const envSources = useAppStore((s) => s.envSources);
   const { toast } = useToast();
   const [imgFailed, setImgFailed] = useState(false);
-  const source = resolveSource({ customAPIs, envSources }, item.sourceKey);
+  const source = resolveSource({ customAPIs, envSources }, item.sourceKey, { url: item.sourceUrl });
 
   const hasPercent =
     item.playbackPosition > 10 && item.duration > 0 && item.playbackPosition < item.duration * 0.95;
