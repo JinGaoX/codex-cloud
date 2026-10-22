@@ -4,7 +4,10 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
+import { standaloneCacheVersion } from '../../scripts/prepare-standalone-pwa.mjs';
 
 const hash = (body: string) => createHash('sha256').update(body).digest('hex');
 const shell = '<html><body>offline app shell</body></html>';
@@ -16,7 +19,13 @@ const precache = [
   { url: '/_next/static/app.js', sha256: hash('compiled') },
 ];
 
-function worker() {
+function resourceResponse(body: string, url: string, redirected = false) {
+  const response = new Response(body);
+  Object.defineProperties(response, { url: { value: url }, redirected: { value: redirected } });
+  return response;
+}
+
+function worker(origin = 'https://app.example.test') {
   const listeners = new Map<string, (event: Record<string, unknown>) => void>();
   const cache = {
     match: vi.fn(async (key: string) => key.endsWith('.txt') ? new Response('static-rsc') : new Response(shell)),
@@ -28,9 +37,10 @@ function worker() {
     keys: vi.fn().mockResolvedValue(['libretv-standalone-shell-old-1', 'libretv-standalone-shell-old-2', 'unrelated-user-cache', 'libretv-standalone-shell-test-build']),
     delete: vi.fn().mockResolvedValue(true),
   };
-  const fetch = vi.fn(async (key: string) => {
+  const fetch = vi.fn(async (key: string, _options?: RequestInit) => {
+    void _options;
     const content = key.endsWith('.js') ? 'compiled' : key.endsWith('.txt') ? 'static-rsc' : shell;
-    return new Response(content);
+    return resourceResponse(content, new URL(key, origin).href);
   });
   const skipWaiting = vi.fn();
   const claim = vi.fn().mockResolvedValue(undefined);
@@ -40,12 +50,12 @@ function worker() {
     .replace('/*__LIBRETV_STANDALONE_ROUTES__*/ {}', JSON.stringify(shellRoute));
   runInNewContext(source, {
     URL, Response, Headers, Uint8Array, crypto: webcrypto, caches, fetch,
-    self: { location: { origin: 'https://app.example.test' }, clients: { claim }, skipWaiting,
+    self: { location: { origin }, clients: { claim }, skipWaiting,
       addEventListener: (name: string, listener: (event: Record<string, unknown>) => void) => listeners.set(name, listener) },
   });
   const request = (url: string, options: { mode?: string; method?: string; headers?: Record<string, string> } = {}) => {
     const respondWith = vi.fn();
-    listeners.get('fetch')!({ request: { url: new URL(url, 'https://app.example.test').href,
+    listeners.get('fetch')!({ request: { url: new URL(url, origin).href,
       method: options.method || 'GET', mode: options.mode, headers: new Headers(options.headers) }, respondWith });
     return respondWith;
   };
@@ -71,6 +81,53 @@ describe('standalone PWA complete app cache', () => {
     await expect(w.event('install')).rejects.toThrow('App resource is unavailable');
     expect(w.caches.delete).toHaveBeenCalledWith('libretv-standalone-shell-test-build');
     expect(w.cache.put).not.toHaveBeenCalled();
+  });
+
+  it('accepts actual same-origin HTTP canonical redirects and caches the original app keys', async () => {
+    const server = createServer((req, res) => {
+      if (req.url === '/index.html' || req.url === '/watch.html') {
+        res.writeHead(req.url === '/index.html' ? 302 : 307, {
+          Location: req.url === '/index.html' ? '/' : '/watch',
+        });
+        res.end();
+        return;
+      }
+      res.writeHead(200);
+      res.end(req.url?.endsWith('.js') ? 'compiled' : req.url?.endsWith('.txt') ? 'static-rsc' : shell);
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const w = worker(origin);
+    w.fetch.mockImplementation((key, options) => fetch(new URL(key, origin), options));
+    try {
+      await w.event('install');
+      expect(w.cache.put.mock.calls.map(([key]) => key)).toEqual(precache.map((entry) => entry.url));
+      const response = w.cache.put.mock.calls[0][1] as Response;
+      const fetched = await w.fetch.mock.results[0].value as Response;
+      expect(fetched.redirected).toBe(true);
+      expect(fetched.url).toBe(`${origin}/`);
+      expect(response.redirected).toBe(false);
+      expect(await response.text()).toBe(shell);
+      expect(w.fetch.mock.calls[0][1]?.redirect).toBe('follow');
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
+  it('rejects a same-origin redirected login page whose bytes do not match the exported shell', async () => {
+    const w = worker();
+    w.fetch.mockResolvedValue(resourceResponse('<html>hosting sign in</html>', 'https://app.example.test/sign-in', true));
+    await expect(w.event('install')).rejects.toThrow('App resource is unavailable');
+    expect(w.cache.put).not.toHaveBeenCalled();
+    expect(w.caches.delete).toHaveBeenCalledWith('libretv-standalone-shell-test-build');
+  });
+
+  it('rejects an off-site final response even when its bytes exactly match', async () => {
+    const w = worker();
+    w.fetch.mockResolvedValue(resourceResponse(shell, 'https://external.example.test/', true));
+    await expect(w.event('install')).rejects.toThrow('App resource is unavailable');
+    expect(w.cache.put).not.toHaveBeenCalled();
+    expect(w.caches.delete).toHaveBeenCalledWith('libretv-standalone-shell-test-build');
   });
 
   it('rejects interrupted downloads, leaving the previous complete cache untouched', async () => {
@@ -163,6 +220,13 @@ describe('standalone PWA complete app cache', () => {
 });
 
 describe('standalone post-export preparation', () => {
+  it('isolates a worker-only change into a new cache version even if app resources did not change', () => {
+    const before = standaloneCacheVersion(precache, shellRoute, 'worker code version one');
+    const after = standaloneCacheVersion(precache, shellRoute, 'worker code version two');
+    expect(before).not.toBe(after);
+    expect(standaloneCacheVersion(precache, shellRoute, 'worker code version one')).toBe(before);
+  });
+
   it('includes generated page, RSC and JS files but excludes API/media/source archives', () => {
     const directory = mkdtempSync(join(tmpdir(), 'libretv-pwa-'));
     try {

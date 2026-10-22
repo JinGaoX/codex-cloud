@@ -5,6 +5,7 @@
 > 安装时下载程序，之后搜索/详情由手机直接访问用户配置的 HTTPS JSON API，视频直接播放。
 > [独立版安装与离线说明](docs/iphone-standalone-pwa.zh-CN.md) · [界面和支持范围](docs/STANDALONE-UI.zh-CN.md)
 > · [本轮验证](docs/standalone-validation.zh-CN.md)。默认 `npm run build` 仍构建下方的全栈版。
+> [打开 iPhone 独立版](https://libretv-pocket-15pm-c3d9.honestfairy18.chatgpt.site)；首次可能需要登录当前 ChatGPT 账号。
 
 > **之前的全栈开发版：`2.20.2-personal.1`**，基于官方 `2.20.2`，保留 AGPL-3.0-or-later。
 > 已补充 iPhone PWA、原生 HLS/MP4、点播收藏与完整备份恢复；未内置影视源。

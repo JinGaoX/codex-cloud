@@ -7,7 +7,12 @@ const CACHE_NAME = `${CACHE_PREFIX}${BUILD}`;
 const FILES = new Set(PRECACHE.map((entry) => entry.url));
 
 async function hasExpectedBytes(response, expected) {
-  if (!response.ok || response.redirected || response.type === 'opaque') return false;
+  if (!response.ok || response.type === 'opaque') return false;
+  // Static hosts can canonicalize /index.html -> / and /watch.html -> /watch.
+  // Follow that normalization, but never accept an off-site response or a login page.
+  try {
+    if (new URL(response.url).origin !== self.location.origin) return false;
+  } catch { return false; }
   const bytes = await response.clone().arrayBuffer();
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   const actual = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -21,10 +26,15 @@ self.addEventListener('install', (event) => {
     try {
       const cache = await caches.open(CACHE_NAME);
       for (const entry of PRECACHE) {
-        const response = await fetch(entry.url, { cache: 'reload', credentials: 'same-origin', redirect: 'error' });
+        const response = await fetch(entry.url, { cache: 'reload', credentials: 'same-origin', redirect: 'follow' });
         // This also rejects a private hosting login page returned with HTTP 200.
         if (!(await hasExpectedBytes(response, entry.sha256))) throw new Error(`App resource is unavailable: ${entry.url}`);
-        await cache.put(entry.url, response);
+        // Navigation requests can use redirect:manual; a cached redirected response is not
+        // valid for respondWith in that mode. Bytes and headers are already verified above.
+        const resource = response.redirected
+          ? new Response(response.body, { status: response.status, statusText: response.statusText, headers: response.headers })
+          : response;
+        await cache.put(entry.url, resource);
       }
     } catch (error) {
       await caches.delete(CACHE_NAME);
