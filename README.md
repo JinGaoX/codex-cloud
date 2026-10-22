@@ -1,7 +1,7 @@
 # LibreTV
 
 > **iPhone 15 Pro Max 手机独立版：`2.20.2-personal.2`**。运行 `npm ci`、`npm run build:iphone`
-> 生成 `standalone-out/`，可用任意静态 HTTPS 分发；不需要运行 Node 后台。
+> 生成 `out/`，可用任意静态 HTTPS 分发；不需要运行 Node 后台。
 > 安装时下载程序，之后搜索/详情由手机直接访问用户配置的 HTTPS JSON API，视频直接播放。
 > [独立版安装与离线说明](docs/iphone-standalone-pwa.zh-CN.md) · [界面和支持范围](docs/STANDALONE-UI.zh-CN.md)
 > · [本轮验证](docs/standalone-validation.zh-CN.md)。默认 `npm run build` 仍构建下方的全栈版。

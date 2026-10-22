@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Keep staging outside the checkout so TypeScript cannot recursively include it.
 const stage = path.join(path.dirname(root), '.libretv-standalone-stage');
-const output = path.join(root, 'standalone-out');
+const output = path.join(root, 'out');
 function run(args, cwd = root) {
   const result = spawnSync(process.execPath, args, {
     cwd, stdio: 'inherit', env: { ...process.env, NEXT_PUBLIC_APP_MODE: 'standalone', NEXT_TELEMETRY_DISABLED: '1' },
