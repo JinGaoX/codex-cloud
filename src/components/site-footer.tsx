@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth';
 import { APP_BRAND } from '@/lib/app-brand';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 
 /** 上游仓库最新 tag（即最新版本号），用于页脚的更新检测 */
 const UPSTREAM_TAGS_API = 'https://api.github.com/repos/LibreSpark/LibreTV/tags?per_page=1';
@@ -25,13 +26,14 @@ function compareVersions(a: string, b: string): number {
 function useUpstreamUpdate(current: string | null): UpstreamUpdate | null {
   const [state, setState] = useState<UpstreamUpdate | null>({ status: 'checking' });
   useEffect(() => {
-    if (!current || current === 'dev') {
+    if (IS_STANDALONE || !current || current === 'dev') {
       setState(null);
       return;
     }
     // 按当前版本隔离缓存到 sessionStorage：一次会话最多请求一次 GitHub API
     const cacheKey = `upstream-latest-tag:${current}`;
-    const cached = sessionStorage.getItem(cacheKey);
+    let cached: string | null = null;
+    try { cached = sessionStorage.getItem(cacheKey); } catch { /* Storage may be disabled. */ }
     if (cached) {
       setState(
         compareVersions(cached, current) > 0

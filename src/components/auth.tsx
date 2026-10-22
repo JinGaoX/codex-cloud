@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, onUnauthorized, STATUS_QUERY_KEY } from '@/lib/client-api';
 import { applyEnvPresets } from '@/lib/subscription-sync';
 import type { AuthStatusResponse } from '@/lib/types';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 import { useToast } from './toast';
 
 /**
@@ -40,8 +41,8 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [checked, setChecked] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const [checked, setChecked] = useState(IS_STANDALONE);
+  const [verified, setVerified] = useState(IS_STANDALONE);
   const [setupRequired, setSetupRequired] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((s) => {
         if (cancelled) return;
         setVerified(s.verified);
-        setSetupRequired(!s.passwordRequired);
+        setSetupRequired(!IS_STANDALONE && !s.passwordRequired);
         setVersion(s.version);
         setChecked(true);
       })
@@ -82,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openLogin = useCallback(() => setModalOpen(true), []);
 
   const logout = useCallback(async () => {
+    if (IS_STANDALONE) return;
     try {
       await api.logout();
     } finally {

@@ -14,3 +14,4 @@ vitest-results.json
 generated-images/
 public/source-code.tar.gz
 artifacts/
+standalone-out/

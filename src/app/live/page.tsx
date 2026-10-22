@@ -23,6 +23,8 @@ import { useAuth } from '@/components/auth';
 import { allLiveSources, useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { SmartImage } from '@/components/smart-image';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
+import Link from 'next/link';
 
 /**
  * 直播页：左侧播放器 + 频道信息 + 节目单；右侧频道侧栏。
@@ -31,6 +33,13 @@ import { SmartImage } from '@/components/smart-image';
  * 移动端侧栏为底部抽屉（右下角 FAB 呼出，选中频道后自动收起）。
  */
 export default function LivePage() {
+  if (IS_STANDALONE) return (
+    <div className="min-h-screen flex flex-col"><Header /><main className="max-w-lg mx-auto px-4 py-12 text-center">
+      <h1 className="text-lg font-semibold text-content mb-3">使用视频链接播放</h1>
+      <p className="text-sm text-muted mb-5">手机独立版优先支持点播搜索及可直接访问的视频链接。</p>
+      <Link href="/" className="btn-primary">返回首页</Link>
+    </main></div>
+  );
   return (
     <Suspense>
       <LiveContent />

@@ -1,6 +1,8 @@
 'use client';
 
 import type { SearchResponse, SearchStreamEvent, SourceSearchOutcome, VideoDetail, DoubanResponse, BangumiCalendarResponse, AuthStatusResponse, SourceConfig, SearchResultItem, LivePlaylistResponse, LiveEpgResponse, SourceListPayload, QualityProbeItem, QualityProbeResult } from './types';
+import { IS_STANDALONE } from './runtime-mode';
+import { standaloneApi } from './standalone-api';
 
 /**
  * 客户端 API 封装。401 时触发全局事件打开登录框，
@@ -105,7 +107,7 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export const api = {
+const serverApi = {
   status: () => request<AuthStatusResponse>('/api/status'),
 
   login: (password: string) =>
@@ -214,7 +216,7 @@ export const api = {
   detailSpeed: async (id: string, source: SourceConfig, signal?: AbortSignal) => {
     const start = performance.now();
     try {
-      const detail = await api.detail(id, source, signal);
+      const detail = await serverApi.detail(id, source, signal);
       return { ok: true, ms: Math.round(performance.now() - start), detail };
     } catch (err) {
       return { ok: false, ms: Math.round(performance.now() - start), detail: undefined as VideoDetail | undefined, error: err instanceof Error ? err.message : '失败' };
@@ -267,7 +269,7 @@ export const api = {
   liveTest: async (url: string) => {
     const start = performance.now();
     try {
-      const playlist = await api.livePlaylist(url, true);
+      const playlist = await serverApi.livePlaylist(url, true);
       return { ok: true, ms: Math.round(performance.now() - start), count: playlist.channels.length, error: undefined as string | undefined };
     } catch (err) {
       return { ok: false, ms: Math.round(performance.now() - start), count: 0, error: err instanceof Error ? err.message : '失败' };
@@ -313,6 +315,9 @@ export const api = {
     await consumeNdjson<LiveProbeResult>(res, onResult);
   },
 };
+
+export type ClientApi = typeof serverApi;
+export const api: ClientApi = IS_STANDALONE ? standaloneApi : serverApi;
 
 export interface SearchFailure {
   sourceKey: string;

@@ -2,10 +2,12 @@
  * 公开品牌配置：iPhone PWA 与未来 Capacitor 共用。
  * 只放可公开的信息；修改名称/图标后重新构建，已安装的 iPhone 图标可能需重新添加。
  */
+import { IS_STANDALONE } from './runtime-mode';
+
 export const APP_BRAND = {
-  name: 'LibreTV',
+  name: IS_STANDALONE ? 'LibreTV 随身版' : 'LibreTV',
   shortName: 'LibreTV',
-  description: '私人影视搜索与观看平台',
+  description: IS_STANDALONE ? '手机独立影视播放器' : '私人影视搜索与观看平台',
   themeColor: '#0b101a',
   backgroundColor: '#0b101a',
   // 公开的修改版源码地址；未指定仓库时由构建生成可下载的源码归档。

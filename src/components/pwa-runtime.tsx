@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { APP_BRAND } from '@/lib/app-brand';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 import { Drawer } from './drawer';
 
 function isStandalone() {
@@ -59,7 +60,7 @@ export function InstallAppButton() {
               <li>点 Safari 的「分享」按钮，再选「添加到主屏幕」。新版本系统中请保留「作为网页 App 打开」。</li>
               <li>确认名称并添加，然后从主屏幕图标启动，即可以独立界面使用。</li>
             </ol>
-            <p className="mt-3">已安装后，请从主屏幕打开。Safari 标签页仍会显示浏览器工具栏。</p>
+            <p className="mt-3">已安装后，请从主屏幕打开。Safari 标签页仍会显示浏览器工具栏。{IS_STANDALONE && '从主屏幕首次启动时也请联网，等底部“正在保存应用”提示消失后再离线使用；Safari 与主屏幕的缓存可能独立。'}</p>
           </section>
           <section>
             <h3 className="font-semibold text-content mb-2">安卓 / 其他设备</h3>
@@ -86,18 +87,21 @@ export function InstallAppButton() {
             }}>申请保留本地数据</button>
             {storageNote && <p role="status" className="mt-2">{storageNote}</p>}
           </section>
-          <p>搜索和在线播放需要网络及云端服务；安装到主屏幕不会把视频下载到手机。</p>
+          <p>{IS_STANDALONE
+            ? '首次联网打开后，应用会完整保存界面到本机。设置、收藏和历史可离线查看；搜索与在线播放仍需联网，并使用支持浏览器直连的 HTTPS 数据源。'
+            : '搜索和在线播放需要网络及云端服务；安装到主屏幕不会把视频下载到手机。'}</p>
         </div>
       </Drawer>
     </>
   );
 }
 
-/** Public static assets only; authenticated pages and media always use the network. */
+/** Server mode caches public assets; the standalone build also saves its public static shell. */
 export function PwaRuntime() {
   const pathname = usePathname();
   const [offline, setOffline] = useState(false);
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
+  const [offlineInstall, setOfflineInstall] = useState<'saving' | 'ready' | 'failed'>('saving');
   const updateRequested = useRef(false);
 
   useEffect(() => {
@@ -113,37 +117,58 @@ export function PwaRuntime() {
   }, []);
 
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+      if (IS_STANDALONE) setOfflineInstall('failed');
+      return;
+    }
     let disposed = false;
     const onControllerChange = () => {
       // Another tab can activate an update; don't reload an ongoing player in this tab.
       if (updateRequested.current) window.location.reload();
     };
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
-    void navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+    const workerPath = IS_STANDALONE ? '/sw-standalone.js' : '/sw.js';
+    void navigator.serviceWorker.register(workerPath, { scope: '/', updateViaCache: 'none' })
       .then((registration) => {
         const checkWaiting = () => {
           if (!disposed && registration.waiting && navigator.serviceWorker.controller) {
             setWaiting(registration.waiting);
           }
         };
+        const inspectInstall = () => {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener('statechange', () => {
+            checkWaiting();
+            if (!disposed && worker.state === 'activated' && worker.scriptURL.endsWith(workerPath)) setOfflineInstall('ready');
+            if (!disposed && worker.state === 'redundant' && !registration.active?.scriptURL.endsWith(workerPath)) setOfflineInstall('failed');
+          });
+        };
         checkWaiting();
+        inspectInstall();
+        // ready is resolved only after a complete install and activation, not when register() returns.
+        void navigator.serviceWorker.ready.then((ready) => {
+          if (!disposed && ready.active?.scriptURL.endsWith(workerPath)) setOfflineInstall('ready');
+        });
         registration.addEventListener('updatefound', () => {
-          registration.installing?.addEventListener('statechange', checkWaiting);
+          inspectInstall();
         });
       })
       // A blocked Service Worker must not prevent search, login or playback.
-      .catch(() => {});
+      .catch(() => { if (!disposed && IS_STANDALONE) setOfflineInstall('failed'); });
     return () => {
       disposed = true;
       navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
     };
   }, []);
 
-  if (!offline && (!waiting || pathname !== '/')) return null;
+  const showInstallState = IS_STANDALONE && pathname === '/' && offlineInstall !== 'ready';
+  if (!offline && !showInstallState && (!waiting || pathname !== '/')) return null;
   return (
     <div className="pwa-status fixed inset-x-0 bottom-0 z-40 bg-surface border-t border-line px-4 py-2 text-center text-sm text-muted" role="status">
-      {offline ? '当前已离线，搜索和在线播放需联网后继续。' : (
+      {offline ? (IS_STANDALONE
+        ? '已离线，可查看本地收藏、历史和设置；搜索和在线播放需联网。'
+        : '当前已离线，搜索和在线播放需联网后继续。') : waiting ? (
         <span>
           应用更新已就绪。
           <button className="text-accent underline ml-2 min-h-10" onClick={() => {
@@ -151,7 +176,9 @@ export function PwaRuntime() {
             waiting?.postMessage({ type: 'ACTIVATE_UPDATE' });
           }}>更新并重新打开</button>
         </span>
-      )}
+      ) : offlineInstall === 'failed'
+        ? '本机应用资源尚未保存成功，请保持联网并重新打开。可尝试释放存储空间后重试。'
+        : '正在将应用保存到本机，请保持联网片刻；完成后可离线打开界面。'}
     </div>
   );
 }

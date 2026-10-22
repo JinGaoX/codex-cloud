@@ -2,6 +2,7 @@
 
 import { Header } from '@/components/header';
 import { SiteFooter } from '@/components/site-footer';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 
 export default function AboutPage() {
   return (
@@ -13,6 +14,7 @@ export default function AboutPage() {
           <p className="text-sm text-muted leading-relaxed">
             LibreTV 是一个免费的在线视频搜索与观看平台。输入片名即可在多个点播源中聚合搜索，
             无需注册、无内嵌广告、不存储任何视频文件。所有播放内容均来自第三方公开接口。
+            {IS_STANDALONE && ' 本版在手机上处理搜索、播放和本地记录，无需运行自己的电脑或搜索后台。'}
           </p>
         </section>
 
@@ -32,7 +34,9 @@ export default function AboutPage() {
           <h2 className="text-base font-semibold text-content mb-2.5">隐私与数据</h2>
           <p className="text-sm text-muted leading-relaxed">
             你的搜索历史、观看进度等数据仅保存在本设备浏览器中（IndexedDB），不会上传到服务器。
-            聚合搜索请求由服务端代理转发，第三方数据源不会看到你的 IP 地址。
+            {IS_STANDALONE
+              ? '搜索和视频由手机直接访问你选择的来源，来源服务会收到正常网络请求。清除网站数据或卸载可能移除本地记录，请定期导出备份。'
+              : '聚合搜索请求由服务端代理转发，第三方数据源不会看到你的 IP 地址。'}
           </p>
         </section>
 

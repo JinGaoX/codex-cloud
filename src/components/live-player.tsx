@@ -6,6 +6,7 @@ import Hls, { type HlsConfig } from 'hls.js';
 import { Spinner } from './states';
 import { prefersTouchPointer } from '@/lib/touch-pointer';
 import { ART_DEFAULT_CONTROL_HIDE_MS, TOUCH_CONTROL_HIDE_MS } from '@/lib/control-hide';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 
 /**
  * 直播播放器：与点播 player-shell 完全独立。
@@ -128,7 +129,7 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
         video.removeEventListener('error', onError);
         nativeCleanup = null;
         if (disposed || destroyed) return;
-        if (allowProxyFallback && !mediaUrl.startsWith(STREAM_PROXY_PREFIX)) {
+        if (!IS_STANDALONE && allowProxyFallback && !mediaUrl.startsWith(STREAM_PROXY_PREFIX)) {
           showHint('直连失败，改用代理重试...');
           setupNative(video, proxyUrl(url), false, failMessage);
           return;
@@ -192,7 +193,7 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
         }
         if (!playbackStarted) {
           if (
-            stage === 'direct' &&
+            !IS_STANDALONE && stage === 'direct' &&
             !mediaUrl.startsWith(STREAM_PROXY_PREFIX) &&
             (data.details === 'manifestLoadError' || data.type === Hls.ErrorTypes.NETWORK_ERROR)
           ) {
@@ -256,7 +257,7 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
       player.load();
       player.on(Mpegts.Events.ERROR, (errType: string) => {
         if (disposed || destroyed) return;
-        if (!playbackStarted && allowProxyFallback && !mediaUrl.startsWith(STREAM_PROXY_PREFIX)) {
+        if (!IS_STANDALONE && !playbackStarted && allowProxyFallback && !mediaUrl.startsWith(STREAM_PROXY_PREFIX)) {
           showHint('直连失败，改用代理重试...');
           void setupFlv(video, proxyUrl(url), false);
           return;

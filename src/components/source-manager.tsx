@@ -30,6 +30,7 @@ import { useAuth } from './auth';
 import { api } from '@/lib/client-api';
 import { syncSourceSubscription } from '@/lib/subscription-sync';
 import { describeParseStats } from '@/lib/tvbox-parser';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 
 /**
  * 设置抽屉：顶部两级导航。
@@ -48,12 +49,15 @@ const PRIMARY_TABS: { id: PrimaryTab; label: string; icon: IconName }[] = [
 ];
 
 const SECONDARY_TABS: Record<PrimaryTab, { id: SecondaryTab; label: string }[]> = {
-  sources: [
+  sources: IS_STANDALONE ? [
+    { id: 'vod', label: '点播源' },
+    { id: 'subs', label: '数据源订阅' },
+  ] : [
     { id: 'vod', label: '点播源' },
     { id: 'live', label: '直播源' },
     { id: 'subs', label: '数据源订阅' },
   ],
-  prefs: [
+  prefs: IS_STANDALONE ? [{ id: 'playback', label: '播放' }] : [
     { id: 'playback', label: '播放与过滤' },
     { id: 'image', label: '封面图加载' },
     { id: 'home', label: '首页与内容' },
@@ -284,7 +288,9 @@ function VodSourcesPanel() {
     <section>
       <SectionTitle
         title="点播源"
-        hint={empty ? undefined : `共 ${all.length} 个 · 已启用 ${all.filter((s) => store.selectedKeys.includes(s.key)).length}`}
+        hint={IS_STANDALONE
+          ? '添加标准 Apple CMS HTTPS 接口；来源需允许手机直接访问'
+          : empty ? undefined : `共 ${all.length} 个 · 已启用 ${all.filter((s) => store.selectedKeys.includes(s.key)).length}`}
         extra={
           <button className="btn-primary btn-sm" onClick={() => setEditing('__new__')}>
             <Icon name="plus" className="w-3.5 h-3.5" />
@@ -500,6 +506,9 @@ function VodSourceRow({
             )}
           </div>
           <div className="text-xs text-faint truncate">{api.url}</div>
+          {IS_STANDALONE && !api.url.startsWith('https://') && (
+            <p className="text-[11px] text-warning mt-1">此旧地址使用 HTTP，请编辑为可直接访问的 HTTPS 地址。</p>
+          )}
         </div>
         <HealthBadge sourceKey={api.key} />
         <TestBadge
@@ -563,14 +572,14 @@ function PlaybackPanel() {
   const markCount = Object.keys(store.skipMarks).length;
   return (
     <section>
-      <SectionTitle title="播放与过滤" />
+      <SectionTitle title={IS_STANDALONE ? '播放' : '播放与过滤'} />
       <div className="space-y-3">
-        <ToggleRow
+        {!IS_STANDALONE && <ToggleRow
           label="广告切片过滤"
           description="剔除播放列表中的广告分片段落（按分片 URL 特征、片头插入与长片间超短中插识别，不动 DISCONTINUITY 时间轴）"
           checked={store.adFilter}
           onChange={(v) => store.updateSettings({ adFilter: v })}
-        />
+        />}
         <ToggleRow
           label="自动连播"
           description="单集播放结束后自动播放下一集"
@@ -611,7 +620,7 @@ function PlaybackPanel() {
         }}
       />
 
-      <VideoCachePanel />
+      {!IS_STANDALONE && <VideoCachePanel />}
     </section>
   );
 }
@@ -909,7 +918,7 @@ function SourceSubscriptions() {
   return (
     <section>
       <SectionTitle
-        title="数据源订阅 / 分享"
+        title={IS_STANDALONE ? '数据源订阅' : '数据源订阅 / 分享'}
         extra={
           <div className="flex items-center gap-1.5 shrink-0">
             <button
@@ -922,14 +931,14 @@ function SourceSubscriptions() {
             >
               导出数据源
             </button>
-            <button
+            {!IS_STANDALONE && <button
               className="btn-ghost btn-sm"
               onClick={() => void publish()}
               disabled={publishing}
               title="把当前已勾选启用的源上传到公开粘贴板，生成可直接订阅的链接"
             >
               {publishing ? '发布中…' : '发布为链接'}
-            </button>
+            </button>}
           </div>
         }
       />
@@ -1270,6 +1279,15 @@ function SourceForm({
       toast('API 链接需以 http:// 或 https:// 开头', 'warning');
       return;
     }
+    if (IS_STANDALONE) {
+      try {
+        const parsed = new URL(u);
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error();
+      } catch {
+        toast('手机独立版需要不含账号密码的 HTTPS API 地址', 'warning');
+        return;
+      }
+    }
     onSubmit({ name: n, url: u, detail: detail.trim() || undefined, isAdult });
   };
 
@@ -1289,13 +1307,13 @@ function SourceForm({
       value={url}
       onChange={(e) => setUrl(e.target.value)}
     />
-    <input
+    {!IS_STANDALONE && <input
       className="input w-full"
       aria-label="详情页地址（可选）"
       placeholder="详情页地址（可选），如 https://example.com"
       value={detail}
       onChange={(e) => setDetail(e.target.value)}
-    />
+    />}
       <label className="flex items-center gap-2 text-xs text-muted">
         <input
           type="checkbox"

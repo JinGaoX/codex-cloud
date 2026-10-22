@@ -14,6 +14,8 @@ import { loadCacheSettings } from '@/lib/video-cache';
 import { formatTime } from '@/lib/utils';
 import { prefersTouchPointer } from '@/lib/touch-pointer';
 import { isAppleMobile, isFileMedia, selectMediaTransport } from '@/lib/media-transport';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { standaloneMediaUrl } from '@/lib/standalone-media';
 import {
   findActiveSegment,
   findCrossedEnding,
@@ -226,12 +228,13 @@ export function PlayerShell({
       abrEwmaDefaultEstimate: 500_000,
       appendErrorMaxRetry: 5,
       // 组合 loader：广告过滤（blockAd 随设置）+ 片段缓存命中（cacheEnabled）
-      loader: createHlsLoader(Hls, { blockAd: p.adFilter }) as unknown as HlsConfig['loader'],
+      loader: createHlsLoader(Hls, { blockAd: !IS_STANDALONE && p.adFilter }) as unknown as HlsConfig['loader'],
     };
   };
 
   // 当前集预取（episodeKey 缺省 = 关闭，见 ensure 内部 settings.enabled 判断）
   const ensurePrefetch = (mediaUrl: string, currentTime: number, horizonSeconds?: number) => {
+    if (IS_STANDALONE) return;
     const p = propsRef.current;
     // Native HLS owns its segment buffer; do not fetch a duplicate copy in JavaScript.
     if (!p.episodeKey || !hlsRef.current || isFileMedia(mediaUrl)) return;
@@ -359,6 +362,14 @@ export function PlayerShell({
    * 注意：不销毁 ArtPlayer，只销毁并重建 hls，从而保留网页全屏等播放器状态。
    */
   const setupMedia = (video: HTMLVideoElement, mediaUrl: string, allowProxyFallback: boolean) => {
+    if (IS_STANDALONE) {
+      try { mediaUrl = standaloneMediaUrl(mediaUrl); }
+      catch (reason) {
+        setError(reason instanceof Error ? reason.message : '请使用可直接播放的 HTTPS 视频链接');
+        setNeedsPlayGesture(false);
+        return;
+      }
+    }
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
     const loadId = ++mediaLoadIdRef.current;
@@ -370,7 +381,7 @@ export function PlayerShell({
     hlsRef.current?.destroy();
     hlsRef.current = null;
     currentMediaUrlRef.current = mediaUrl;
-    nativeProxyFallbackRef.current = allowProxyFallback && !mediaUrl.startsWith('/api/proxy');
+    nativeProxyFallbackRef.current = !IS_STANDALONE && allowProxyFallback && !mediaUrl.startsWith('/api/proxy');
     setNeedsPlayGesture(true);
     const transport = selectMediaTransport(mediaUrl, {
       hlsJs: Hls.isSupported(),
@@ -474,7 +485,7 @@ export function PlayerShell({
           // 前两次重试保留直连；达到退避阈值或清单级错误时升级为代理形式
           // （同源 cookie 鉴权，规避 CORS/防盗链/分片被拒）
           if (
-            allowProxyFallback &&
+            !IS_STANDALONE && allowProxyFallback &&
             !mediaUrl.startsWith('/api/proxy') &&
             (decision.attempt >= 2 || data.details === 'manifestLoadError')
           ) {
@@ -701,7 +712,9 @@ export function PlayerShell({
           setupMedia(art.video, `/api/proxy?url=${encodeURIComponent(currentMediaUrlRef.current)}`, false);
           return;
         }
-        setError('视频播放失败：线路不可达或当前设备不支持此格式，请切换资源');
+        setError(IS_STANDALONE
+          ? '此线路无法在手机上直接播放，请尝试其他 HTTPS 链接或兼容格式'
+          : '视频播放失败：线路不可达或当前设备不支持此格式，请切换资源');
         propsRef.current.onRequestSwitchSource?.('原生播放器无法播放此资源');
         return;
       }

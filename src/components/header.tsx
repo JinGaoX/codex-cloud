@@ -13,6 +13,7 @@ import { requestShowDownloadManager } from './download-manager';
 import { Icon } from './icon';
 import { SearchHistoryDropdown, useSearchHistory } from './search-history';
 import { cn } from '@/lib/utils';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 
 /** 顶部导航：Logo、搜索框（首页外）、历史、设置 */
 export function Header({ showSearch = false }: { showSearch?: boolean }) {
@@ -101,10 +102,10 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
           <div className="flex-1 sm:hidden" />
 
           <nav className="flex items-center gap-1 ml-auto">
-            <HeaderLink href="/live" active={pathname === '/live'}>
+            {!IS_STANDALONE && <HeaderLink href="/live" active={pathname === '/live'}>
               直播
-            </HeaderLink>
-            <span className="hidden sm:contents"><HeaderLink href="/about" active={pathname === '/about'}>关于</HeaderLink></span>
+            </HeaderLink>}
+            <span className={IS_STANDALONE ? 'contents' : 'hidden sm:contents'}><HeaderLink href="/about" active={pathname === '/about'}>关于</HeaderLink></span>
             <ThemeToggle />
             <InstallAppButton />
             <IconButton label="我的收藏" onClick={() => setFavoritesOpen(true)}>
@@ -113,9 +114,9 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
             <IconButton label="观看历史" onClick={() => setHistoryOpen(true)}>
               <Icon name="clock" />
             </IconButton>
-            <span className="hidden sm:contents"><IconButton label="下载管理" onClick={requestShowDownloadManager}>
+            {!IS_STANDALONE && <span className="hidden sm:contents"><IconButton label="下载管理" onClick={requestShowDownloadManager}>
               <Icon name="download" />
-            </IconButton></span>
+            </IconButton></span>}
             <IconButton label="设置" onClick={() => setSettingsOpen(true)}>
               <Icon name="gear" />
             </IconButton>

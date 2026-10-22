@@ -7,6 +7,7 @@ import { migrateSkipMarks, type SkipMark, type SkipSegment } from './skip-marks'
 import { isQualityEntryFresh, mergeQualityEntries, qualityKey } from './quality';
 import { clearLiveProbeResultsDb, loadLiveProbeResults, saveLiveProbeResults } from './db';
 import { PERSIST_KEY, createThrottledStorage } from './persist-storage';
+import { IS_STANDALONE } from './runtime-mode';
 
 /**
  * 全局设置（zustand + localStorage 持久化）。
@@ -317,7 +318,7 @@ export const useAppStore = create<AppState>()(
       selectedKeys: [],
       yellowFilter: true,
       adFilter: true,
-      doubanEnabled: true,
+      doubanEnabled: !IS_STANDALONE,
       recommendSource: 'hot-list',
       recommendSourceTouched: false,
       autoplayNext: true,

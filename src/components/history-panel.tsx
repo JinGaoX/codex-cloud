@@ -19,6 +19,7 @@ import {
 import { buildWatchUrl, cn, formatRelativeTime, formatTime } from '@/lib/utils';
 import { useToast } from './toast';
 import { resolveSource, useAppStore } from '@/lib/store';
+import { DIRECT_MEDIA_SOURCE } from '@/lib/standalone-media';
 
 /**
  * 观看历史面板（IndexedDB 实时查询）。
@@ -156,6 +157,7 @@ function HistoryItem({ item }: { item: HistoryEntry }) {
     title: item.title,
     sourceUrl: source?.url,
     detail: source?.detail,
+    episodeUrl: item.sourceKey === DIRECT_MEDIA_SOURCE ? item.vodId : undefined,
   });
 
   const remove = () => {

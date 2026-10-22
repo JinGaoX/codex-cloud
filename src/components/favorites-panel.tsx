@@ -10,9 +10,13 @@ import { SmartImage } from './smart-image';
 import { EmptyState, ErrorState, LoadingState } from './states';
 import { Icon } from './icon';
 import { useToast } from './toast';
+import { useRouter } from 'next/navigation';
+import { DIRECT_MEDIA_SOURCE, directMediaWatchUrl } from '@/lib/standalone-media';
 
 /** 收藏与观看历史分开保存，清空历史或删除源都不会移除收藏。 */
 export function FavoritesPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const { toast } = useToast();
   const result = useLiveQuery(async () => {
     try { return { items: await db.favorites.orderBy('timestamp').reverse().toArray(), error: false }; }
     catch { return { items: [] as FavoriteEntry[], error: true }; }
@@ -37,7 +41,12 @@ export function FavoritesPanel({ open, onClose }: { open: boolean; onClose: () =
             description={query ? undefined : '在影片详情中点击「收藏」，下次从这里继续选集播放。'} />
         ) : (
           <ul className="space-y-2">
-            {visible.map((item) => <FavoriteItem key={item.id} item={item} onOpen={() => setDetailItem(item)} />)}
+            {visible.map((item) => <FavoriteItem key={item.id} item={item} onOpen={() => {
+              if (item.sourceKey === DIRECT_MEDIA_SOURCE) {
+                try { const href = directMediaWatchUrl(item.vodId, item.name); onClose(); router.push(href); }
+                catch { toast('收藏的视频链接不再有效，请重新添加 HTTPS 地址', 'error'); }
+              } else setDetailItem(item);
+            }} />)}
           </ul>
         )}
       </Drawer>
@@ -59,7 +68,7 @@ function FavoriteItem({ item, onOpen }: { item: FavoriteEntry; onOpen: () => voi
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium text-content">{item.name}</span>
           <span className="block truncate text-xs text-faint mt-1">{[item.sourceName, item.year].filter(Boolean).join(' · ')}</span>
-          <span className="block text-xs text-accent mt-1">查看详情与选集</span>
+          <span className="block text-xs text-accent mt-1">{item.sourceKey === DIRECT_MEDIA_SOURCE ? '继续播放' : '查看详情与选集'}</span>
         </span>
       </button>
       <button className="p-2 rounded-md text-faint hover:text-danger hover:bg-hover" aria-label={`取消收藏 ${item.name}`}

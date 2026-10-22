@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { api } from '@/lib/client-api';
 // 播放器（artplayer + hls.js）按需加载：拆出独立 chunk，不占首屏 First Load JS
 const PlayerShell = dynamic(() => import('@/components/player-shell').then((m) => m.PlayerShell), {
@@ -33,8 +34,13 @@ import {
   updateHistoryProgress,
   upsertHistory,
   db,
+  addFavorite,
+  removeFavorite,
+  favoriteKeyOf,
 } from '@/lib/db';
 import { cn } from '@/lib/utils';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { DIRECT_MEDIA_SOURCE } from '@/lib/standalone-media';
 
 /**
  * 播放页（唯一入口，替代旧版 watch.html → player.html 跳转链）。
@@ -99,16 +105,21 @@ function WatchContent() {
     };
   }, [skipPanelOpen]);
 
-  const source = resolveSource(store, sourceKey, {
+  const isDirectMedia = sourceKey === DIRECT_MEDIA_SOURCE && Boolean(directUrl);
+  const source = isDirectMedia ? { key: DIRECT_MEDIA_SOURCE, name: '视频链接', url: '' } : resolveSource(store, sourceKey, {
     url: searchParams.get('sourceUrl') || undefined,
     detail: searchParams.get('detail') || undefined,
   });
+  const directFavorite = useLiveQuery(
+    () => isDirectMedia ? db.favorites.get(favoriteKeyOf(DIRECT_MEDIA_SOURCE, vodId)).catch(() => undefined) : undefined,
+    [isDirectMedia, vodId],
+  );
 
   // 详情查询：无 id（纯直连链接分享）时跳过
   const detailQuery = useQuery({
     queryKey: ['detail', sourceKey, vodId, source?.url],
     queryFn: ({ signal }) => api.detail(vodId, source!, signal),
-    enabled: Boolean(source && vodId && verified),
+    enabled: Boolean(!isDirectMedia && source && vodId && verified),
     staleTime: 5 * 60_000,
   });
 
@@ -288,7 +299,15 @@ function WatchContent() {
             </p>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button
+            {isDirectMedia && <button className="btn-ghost btn-sm" aria-pressed={Boolean(directFavorite)}
+              onClick={() => {
+                const operation = directFavorite
+                  ? removeFavorite(DIRECT_MEDIA_SOURCE, vodId)
+                  : addFavorite({ sourceKey: DIRECT_MEDIA_SOURCE, sourceName: '视频链接', vodId, name: videoTitle });
+                void operation.then(() => toast(directFavorite ? '已取消收藏' : '已加入收藏', 'success'))
+                  .catch(() => toast('无法保存收藏，请检查本机存储空间', 'error'));
+              }}><Icon name="heart" className="w-4 h-4" />{directFavorite ? '已收藏' : '收藏'}</button>}
+            {!IS_STANDALONE && <button
               className="btn-ghost btn-sm"
               onClick={() => {
                 if (!currentUrl) return;
@@ -303,16 +322,16 @@ function WatchContent() {
               }}
             >
               下载本集
-            </button>
-            <button className="btn-ghost btn-sm" onClick={() => setSwitchOpen(true)}>
+            </button>}
+            {!isDirectMedia && <button className="btn-ghost btn-sm" onClick={() => setSwitchOpen(true)}>
               切换资源
-            </button>
+            </button>}
           </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+        <div className={cn('grid grid-cols-1 gap-4', !isDirectMedia && 'lg:grid-cols-[1fr_300px]')}>
           <div>
             <div ref={playerFrameRef} className="aspect-video bg-black rounded-lg overflow-hidden">
               {currentUrl ? (
@@ -320,7 +339,7 @@ function WatchContent() {
                   url={currentUrl}
                   title={videoTitle}
                   adFilter={store.adFilter}
-                  autoplayNext={store.autoplayNext}
+                  autoplayNext={!isDirectMedia && store.autoplayNext}
                   skipMark={skipMark}
                   autoSkipSegments={store.autoSkipSegments}
                   pendingStart={pendingStart}
@@ -334,7 +353,7 @@ function WatchContent() {
                   onTimeUpdate={handleProgress}
                   onPause={handleProgress}
                   onEnded={handleEnded}
-                  onRequestSwitchSource={() => setSwitchOpen(true)}
+                  onRequestSwitchSource={isDirectMedia ? undefined : () => setSwitchOpen(true)}
                   hasPrevEpisode={currentIndex > 0}
                   hasNextEpisode={episodes.length > 0 && currentIndex < episodes.length - 1}
                   onPrevEpisode={() => goEpisode(currentIndex - 1)}
@@ -361,7 +380,7 @@ function WatchContent() {
             </div>
 
             {/* 操作栏 */}
-            <div className="flex flex-wrap items-center gap-2 mt-3">
+            {!isDirectMedia && <div className="flex flex-wrap items-center gap-2 mt-3">
               <button
                 className="btn-ghost btn-sm"
                 disabled={currentIndex <= 0}
@@ -401,9 +420,9 @@ function WatchContent() {
                 />
                 自动连播
               </label>
-            </div>
+            </div>}
 
-            <SkipMarkPanel
+            {!isDirectMedia && <SkipMarkPanel
               open={skipPanelOpen}
               onClose={() => setSkipPanelOpen(false)}
               markKey={markKey}
@@ -421,11 +440,11 @@ function WatchContent() {
                   isPaused: () => api.isPaused(),
                 };
               }}
-            />
+            />}
           </div>
 
           {/* 剧集侧栏 */}
-          <aside className="bg-surface-raised rounded-lg p-3 h-fit">
+          {!isDirectMedia && <aside className="bg-surface-raised rounded-lg p-3 h-fit">
             <div className="flex items-center justify-between gap-2 mb-2.5">
               <h2 className="text-sm font-semibold text-content">
                 剧集列表{episodes.length > 0 && `（${episodes.length}）`}
@@ -467,7 +486,7 @@ function WatchContent() {
             <p className="hidden md:block text-[10px] text-faint mt-3 leading-relaxed">
               快捷键：空格 播放/暂停 · ←/→ 快退/快进 5s · ↑/↓ 音量 · F 全屏 · Alt+←/→ 切换集数
             </p>
-          </aside>
+          </aside>}
         </div>
       </main>
 

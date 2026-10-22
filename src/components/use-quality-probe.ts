@@ -6,6 +6,7 @@ import { QUALITY_FAIL_TTL_MS, isRetryableTimeout, qualityKey, summarizeQuality }
 import { createProbeQueue, type ProbeQueue } from '@/lib/quality-probe-queue';
 import { readQualities, useAppStore } from '@/lib/store';
 import type { QualityEntry, QualityProbeItem, QualityProbeResult, SourceConfig } from '@/lib/types';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 
 /** 探测目标：搜索结果条目里与画质相关的最小字段集 */
 export interface QualityProbeTarget {
@@ -173,6 +174,7 @@ export function useQualityProbe(sources?: SourceConfig[]) {
 
   const probe = useCallback(
     (items: QualityProbeTarget[], opts?: { force?: boolean }) => {
+      if (IS_STANDALONE) return;
       const list = dedupeByKey(items);
       if (list.length === 0) return;
       setTargets(list);
@@ -279,6 +281,7 @@ export function useQualityProbe(sources?: SourceConfig[]) {
    */
   const probeQueued = useCallback(
     (items: QualityProbeTarget[]) => {
+      if (IS_STANDALONE) return;
       const list = dedupeByKey(items);
       if (list.length === 0) return;
       setTargets(list);

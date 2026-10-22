@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { buildImageCandidates } from '@/lib/utils';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { standaloneImageCandidates } from '@/lib/standalone-media';
 
 interface SmartImageProps {
   /** 原始图片地址（未经代理加工，降级链由本组件按加载方式生成） */
@@ -30,7 +32,9 @@ export function SmartImage({
   loading = 'lazy',
   onExhausted,
 }: SmartImageProps) {
-  const candidates = buildImageCandidates(url, mode, customProxy);
+  const candidates = IS_STANDALONE
+    ? standaloneImageCandidates(url)
+    : buildImageCandidates(url, mode, customProxy);
   const [idx, setIdx] = useState(0);
 
   // 地址或加载方式变化时重置降级进度
