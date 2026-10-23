@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111118">
+  <title>安装 LibreTV 到 iPhone</title>
+  <style>
+    :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#111118;color:#f4f4f7}
+    *{box-sizing:border-box}body{margin:0;padding: max(28px,env(safe-area-inset-top)) max(22px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(22px,env(safe-area-inset-left))}
+    main{max-width:520px;margin:0 auto}header{display:flex;align-items:center;gap:14px;margin:20px 0 30px}img{width:64px;height:64px;border-radius:18px}h1{font-size:24px;margin:0 0 6px}header p{margin:0;color:#a1a1b5;font-size:14px}h2{font-size:19px;margin-top:0}p,li{font-size:15px;line-height:1.8}li{padding:4px 0}ol{padding-left:24px}section{border:1px solid #2c2c39;background:#1a1a24;padding:22px;border-radius:20px;margin-bottom:18px}a{color:#a99aff}.button{display:block;text-align:center;background:#8268ed;color:white;padding:13px 16px;border-radius:12px;text-decoration:none;font-weight:600;min-height:48px}.secondary{background:#2c283f;margin-top:16px}.note{color:#aaaabb;font-size:13px}.tag{font-size:12px;color:#c8bdff;background:#32294f;padding:4px 8px;border-radius:6px;margin-left:6px;white-space:nowrap}footer{text-align:center;font-size:13px;color:#9999aa;margin-top:24px}summary{cursor:pointer;font-size:16px;font-weight:600}details p{margin-bottom:10px}
+  </style>
+</head>
+<body><main>
+  <header><img src="/icons/apple-touch-icon.png" alt=""><div><h1>LibreTV 随身版</h1><p>为 iPhone 15 Pro Max 准备的主屏幕入口</p></div></header>
+  <section>
+    <h2>添加到主屏幕 <span class="tag">推荐</span></h2>
+    <ol>
+      <li>用 <strong>Safari</strong> 打开本安装页。如在 ChatGPT 内打开，先通过菜单选择用 Safari 打开。</li>
+      <li>点下面的“打开 LibreTV”，完成托管平台的访问验证。</li>
+      <li>点 Safari 的<strong>分享按钮 → 添加到主屏幕</strong>。如果有“作为网页 App 打开”，保持开启，再点“添加”。</li>
+      <li>回到主屏幕，点 LibreTV 图标。首次在图标内打开时，再设置你自己的 <strong>6 位本机密码</strong>。</li>
+    </ol>
+    <a class="button" href="/">打开 LibreTV</a>
+    <p class="note">图标打开后以独立界面运行。安装不需要苹果开发者账号或 App Store。Safari 与主屏幕 App 的记录可能独立保存，请在常用入口设置密码和添加片源。</p>
+  </section>
+  <section>
+    <details><summary>备用：下载桌面快捷图标</summary>
+      <p>此文件是未签名的 Apple WebClip 描述文件，仅添加一个可移除的全屏网页图标，不包含设备管理、证书或网络配置。</p>
+      <a class="button secondary" href="/LibreTV.mobileconfig" download="LibreTV.mobileconfig">下载 LibreTV 快捷图标</a>
+      <ol><li>在 Safari 允许下载描述文件。</li><li>打开 iPhone <strong>设置 → 已下载描述文件 → 安装</strong>，按系统提示确认。系统可能要求输入你的 iPhone 解锁密码。</li><li>回到主屏幕点 LibreTV，再设置本机密码。</li></ol>
+      <p class="note">这不是 IPA，也不是“快捷指令”自动化。系统可能提示文件未签名；如不希望安装描述文件，请使用上面的 Safari 方法。下载后请及时安装，未安装的描述文件会被系统自动移除。</p>
+    </details>
+  </section>
+  <p class="note">当前安装网址仅限本人访问，首次打开或平台登录失效时仍可能出现 ChatGPT 验证。本机密码无需注册，只锁定应用界面，不加密记录，也不能替代平台验证。应用文件缓存完成后可离线启动；搜索和播放需要联网且片源支持 HTTPS 与跨域访问。</p>
+  <footer><a href="https://support.apple.com/zh-cn/guide/iphone/iphea86e5236/ios">Apple 安装说明</a> · <a href="/">返回应用</a><p>实际全屏播放和安装效果仍需在你的 iPhone 上确认。</p></footer>
+</main></body></html>

@@ -31,6 +31,7 @@ import { api } from '@/lib/client-api';
 import { syncSourceSubscription } from '@/lib/subscription-sync';
 import { describeParseStats } from '@/lib/tvbox-parser';
 import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { DeviceLockSettings } from './device-lock-gate';
 
 /**
  * 设置抽屉：顶部两级导航。
@@ -40,7 +41,7 @@ import { IS_STANDALONE } from '@/lib/runtime-mode';
  */
 
 type PrimaryTab = 'sources' | 'prefs' | 'data';
-type SecondaryTab = 'vod' | 'live' | 'subs' | 'playback' | 'image' | 'home' | 'io';
+type SecondaryTab = 'vod' | 'live' | 'subs' | 'playback' | 'image' | 'home' | 'io' | 'lock';
 
 const PRIMARY_TABS: { id: PrimaryTab; label: string; icon: IconName }[] = [
   { id: 'sources', label: '源管理', icon: 'link' },
@@ -62,7 +63,7 @@ const SECONDARY_TABS: Record<PrimaryTab, { id: SecondaryTab; label: string }[]> 
     { id: 'image', label: '封面图加载' },
     { id: 'home', label: '首页与内容' },
   ],
-  data: [{ id: 'io', label: '配置导入导出' }],
+  data: IS_STANDALONE ? [{ id: 'io', label: '配置导入导出' }, { id: 'lock', label: '本机密码' }] : [{ id: 'io', label: '配置导入导出' }],
 };
 
 const TAB_STORAGE_KEY = 'libretv-settings-tab';
@@ -141,6 +142,7 @@ export function SourceManagerDrawer({ open, onClose }: { open: boolean; onClose:
       {current === 'home' && <HomePanel />}
       {current === 'subs' && <SourceSubscriptions />}
       {current === 'io' && <ConfigIoPanel />}
+      {current === 'lock' && <DeviceLockSettings />}
     </Drawer>
   );
 }

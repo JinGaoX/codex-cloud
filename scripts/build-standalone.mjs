@@ -16,6 +16,7 @@ function run(args, cwd = root) {
   if (result.status !== 0) process.exit(result.status || 1);
 }
 
+run(['scripts/prepare-iphone-shortcut.mjs']);
 run(['scripts/source-distribution.mjs']);
 rmSync(stage, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
@@ -28,6 +29,6 @@ symlinkSync(path.join(root, 'node_modules'), path.join(stage, 'node_modules'), p
 run([path.join(root, 'node_modules/next/dist/bin/next'), 'build'], stage);
 rmSync(output, { recursive: true, force: true });
 cpSync(path.join(stage, 'out'), output, { recursive: true });
-writeFileSync(path.join(output, '_headers'), '/sw-standalone.js\n  Cache-Control: no-store\n  Service-Worker-Allowed: /\n/manifest.webmanifest\n  Cache-Control: no-cache\n/*\n  X-Content-Type-Options: nosniff\n');
+writeFileSync(path.join(output, '_headers'), '/sw-standalone.js\n  Cache-Control: no-store\n  Service-Worker-Allowed: /\n/manifest.webmanifest\n  Cache-Control: no-cache\n/LibreTV.mobileconfig\n  Content-Type: application/x-apple-aspen-config\n  Content-Disposition: attachment; filename="LibreTV.mobileconfig"\n  Cache-Control: no-store\n/*\n  X-Content-Type-Options: nosniff\n');
 run(['scripts/prepare-standalone-pwa.mjs', output]);
 console.log(`Standalone iPhone PWA exported to ${output}; no Next API runtime is included.`);

@@ -12,7 +12,7 @@ export function standaloneCacheVersion(precache, routes, workerTemplate) {
     .update(JSON.stringify({ precache, routes })).digest('hex').slice(0, 20);
 }
 
-export function prepareStandalonePwa(directory = path.join(root, 'standalone-out')) {
+export function prepareStandalonePwa(directory = path.join(root, 'out')) {
   directory = path.resolve(directory);
   if (!existsSync(path.join(directory, 'index.html'))) throw new Error('Static export index.html is missing');
   const files = [];

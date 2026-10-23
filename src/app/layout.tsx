@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
 import { PwaRuntime } from '@/components/pwa-runtime';
+import { DeviceLockGate } from '@/components/device-lock-gate';
 import { APP_BRAND } from '@/lib/app-brand';
 import type { CSSProperties } from 'react';
 
@@ -59,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers><DeviceLockGate>{children}</DeviceLockGate></Providers>
         <PwaRuntime />
       </body>
     </html>

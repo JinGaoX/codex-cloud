@@ -11,7 +11,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.txt': 'text/x-component',
   '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.png': 'image/png', '.ico': 'image/x-icon', '.svg': 'image/svg+xml',
-  '.mp4': 'video/mp4', '.gz': 'application/gzip' };
+  '.mp4': 'video/mp4', '.gz': 'application/gzip', '.mobileconfig': 'application/x-apple-aspen-config' };
 if (!existsSync(path.join(root, 'index.html'))) throw new Error('Run npm run build:iphone first.');
 const server = http.createServer((req, res) => {
   let pathname;
@@ -32,6 +32,7 @@ const server = http.createServer((req, res) => {
     'Content-Length': end - start + 1, 'Accept-Ranges': 'bytes',
     'Cache-Control': file.endsWith('.js') && path.basename(file).startsWith('sw') ? 'no-store' : 'no-cache' };
   if (match) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+  if (file.endsWith('.mobileconfig')) headers['Content-Disposition'] = 'attachment; filename="LibreTV.mobileconfig"';
   res.writeHead(match ? 206 : 200, headers);
   if (req.method === 'HEAD') res.end(); else createReadStream(file, { start, end }).pipe(res);
 });
