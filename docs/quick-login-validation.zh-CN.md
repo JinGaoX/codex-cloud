@@ -45,3 +45,12 @@ Web App 全屏/安全区、数字键盘、长时间原生 HLS 播放、横屏、
 
 安装入口：[iPhone 安装页](https://libretv-pocket-15pm-c3d9.honestfairy18.chatgpt.site/install.html)。
 具体部署提交与状态记录在交付说明；只有部署成功才将新功能视为已上线。
+
+## 部署检查范围
+
+生产站点实际返回的首页、安装页、描述文件及准备后的 Service Worker 均为 HTTP 200，
+内容 SHA-256 与本机构建文件一致；安装页会规范化重定向到 `/install`。
+当前 Sites 静态托管将描述文件作为 `application/octet-stream` 普通文件发送，
+没有采用 `_headers` 中声明的 Apple profile MIME 与附件文件名。
+因此备用描述文件只确认文件完整，不能据此承诺 Safari 会直接识别并出现安装入口；
+安装页已提供此情况下改用 Safari 分享菜单的引导，交付以 Safari 添加主屏幕为推荐路径。
