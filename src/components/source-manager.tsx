@@ -30,8 +30,9 @@ import { useAuth } from './auth';
 import { api } from '@/lib/client-api';
 import { syncSourceSubscription } from '@/lib/subscription-sync';
 import { describeParseStats } from '@/lib/tvbox-parser';
-import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
 import { DeviceLockSettings } from './device-lock-gate';
+import { exportTextFile, localFileExportMessage } from '@/lib/local-file-export';
 
 /**
  * 设置抽屉：顶部两级导航。
@@ -786,6 +787,7 @@ function SourceSubscriptions() {
   // 每个订阅独立的同步状态，允许多个订阅并行同步（此前单值状态会串台）
   const [syncing, setSyncing] = useState<Set<string>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [exportingSources, setExportingSources] = useState(false);
 
   const sync = async (url: string) => {
     setSyncing((prev) => new Set(prev).add(url));
@@ -876,7 +878,8 @@ function SourceSubscriptions() {
     );
   };
 
-  const exportSources = () => {
+  const exportSources = async () => {
+    if (exportingSources) return;
     const all = [...store.envSources, ...store.customAPIs];
     const seen = new Set<string>();
     const sources = all
@@ -899,14 +902,15 @@ function SourceSubscriptions() {
       .map(({ name, url, epg }) => ({ name: name || hostnameOf(url), url, epg }));
 
     const payload = { name: 'LibreTV-SourceList', version: 2, exportedAt: Date.now(), sources, liveSources };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `LibreTV-SourceList_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast(`已导出 ${sources.length} 个点播源、${liveSources.length} 个直播源，托管后即可被他人订阅`, 'success');
+    setExportingSources(true);
+    try {
+      const result = await exportTextFile(JSON.stringify(payload, null, 2), `LibreTV-SourceList_${Date.now()}.json`);
+      toast(localFileExportMessage(result), 'info');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : '导出失败', 'error');
+    } finally {
+      setExportingSources(false);
+    }
   };
 
   const deleteImpact = (url: string) => {
@@ -927,7 +931,7 @@ function SourceSubscriptions() {
               className="btn-ghost btn-sm"
               onClick={exportSources}
               disabled={
-                store.customAPIs.length + store.envSources.length + store.liveSubscriptions.length + store.liveEnvSources.length ===
+                exportingSources || store.customAPIs.length + store.envSources.length + store.liveSubscriptions.length + store.liveEnvSources.length ===
                 0
               }
             >
@@ -997,7 +1001,7 @@ function SourceSubscriptions() {
       {store.subscriptions.length === 0 ? (
         <p className="text-xs text-faint">
           一份订阅可同时下发点播源与直播源，支持 LibreTV 源列表与 TVBOX 配置（仅导入可直接使用的接口，Spider 类站点自动跳过）；
-          「导出数据源」生成的 JSON 托管到任意 URL 即可分享给他人订阅。
+          {IS_NATIVE ? '「导出数据源」可保存到“文件”作本机备份，不会自动上传。' : '「导出数据源」生成的 JSON 托管到任意 URL 即可分享给他人订阅。'}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -1118,27 +1122,23 @@ function ConfigIoPanel() {
   const { toast } = useToast();
   const { verified, openLogin } = useAuth();
   const [pending, setPending] = useState<{ file: File; summary: string } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const doExport = async () => {
+    if (exporting) return;
     if (verified === false) {
       openLogin();
       return;
     }
+    setExporting(true);
     try {
       const json = await exportConfig();
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `LibreTV-Settings_${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      // Safari 可能在 click 返回后才开始读取 Blob，不能立即撤销地址。
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      toast('配置已导出', 'success');
-    } catch {
-      toast('导出失败', 'error');
+      const result = await exportTextFile(json, `LibreTV-Settings_${Date.now()}.json`);
+      toast(localFileExportMessage(result), 'info');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : '导出失败', 'error');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -1168,7 +1168,7 @@ function ConfigIoPanel() {
     <section>
       <SectionTitle title="配置导入导出" hint="包含数据源、订阅、偏好设置、收藏、观看历史与逐集进度；请妥善保管含私人源地址的备份" />
       <div className="flex gap-2">
-        <button className="btn-ghost flex-1 text-xs" onClick={doExport}>
+        <button className="btn-ghost flex-1 text-xs" onClick={doExport} disabled={exporting}>
           导出配置
         </button>
         <label className="btn-ghost flex-1 text-xs cursor-pointer">

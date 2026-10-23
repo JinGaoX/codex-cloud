@@ -15,3 +15,13 @@ generated-images/
 public/source-code.tar.gz
 artifacts/
 standalone-out/
+native-dist/
+# Generated iOS web assets and signing/build state.
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/build/
+ios/DerivedData/
+**/xcuserdata/
+*.ipa
+*.p12
+*.mobileprovision

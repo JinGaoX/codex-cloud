@@ -169,6 +169,12 @@ describe('device-only PIN', () => {
     expect(values.has(DEVICE_LOCK_STORAGE_KEY)).toBe(false);
   });
 
+  it('requires SubtleCrypto for the browser build even when secure random bytes are available', async () => {
+    vi.stubGlobal('crypto', { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) });
+    await expect(setupDevicePin(TEST_PIN)).rejects.toMatchObject({ code: 'crypto' });
+    expect(values.has(DEVICE_LOCK_STORAGE_KEY)).toBe(false);
+  });
+
   it('rejects verification before initial setup', async () => {
     await expect(verifyDevicePin(TEST_PIN)).rejects.toMatchObject({ code: 'not-configured' });
   });

@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth';
 import { APP_BRAND } from '@/lib/app-brand';
-import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
+import { exportNativeSourceArchive, localFileExportMessage } from '@/lib/local-file-export';
+import { useToast } from './toast';
 
 /** 上游仓库最新 tag（即最新版本号），用于页脚的更新检测 */
 const UPSTREAM_TAGS_API = 'https://api.github.com/repos/LibreSpark/LibreTV/tags?per_page=1';
@@ -91,7 +93,20 @@ function UpdateTip({ update }: { update: UpstreamUpdate | null }) {
 /** 全站统一页脚：仓库链接 + 版本号（悬停显示上游更新检测结果） */
 export function SiteFooter() {
   const { version } = useAuth();
+  const { toast } = useToast();
+  const [exportingSource, setExportingSource] = useState(false);
   const upstreamUpdate = useUpstreamUpdate(version);
+  const shareSource = async () => {
+    if (exportingSource) return;
+    setExportingSource(true);
+    try {
+      toast(localFileExportMessage(await exportNativeSourceArchive()), 'info');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : '源码导出失败', 'error');
+    } finally {
+      setExportingSource(false);
+    }
+  };
   return (
     <footer className="border-t border-line py-4">
       <p className="text-center text-xs text-faint">
@@ -107,7 +122,9 @@ export function SiteFooter() {
         {' · '}
         AGPL-3.0 License
         {' · '}
-        <a href={APP_BRAND.sourceUrl} className="hover:text-accent">本修改版源码</a>
+        {IS_NATIVE
+          ? <button className="hover:text-accent disabled:opacity-50" onClick={shareSource} disabled={exportingSource}>本修改版源码</button>
+          : <a href={APP_BRAND.sourceUrl} className="hover:text-accent">本修改版源码</a>}
       </p>
     </footer>
   );

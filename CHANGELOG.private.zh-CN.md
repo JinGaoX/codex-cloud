@@ -1,5 +1,23 @@
 # 私人 LibreTV 开发记录
 
+## 2.20.2-personal.4 · 2026-10-23
+
+开发分支：`feat/iphone-local-native`。按用户要求转向手机本地安装，不再发布新云端版本。
+
+- 新增 Capacitor 8.5.3 iOS SPM 工程，程序资源打包入 App，固定本机 origin，未设置远程 `server.url`。
+  `npm run native:ios` 构建共享前端并同步原生工程；没有在 Linux 假造 IPA。
+- 复用直连搜索、选集、播放器、本机收藏/历史/PIN；原生模式关闭 SW、网页安装和网站更新流程，
+  移除托管登录提示。搜索/视频仍需合法可直连的 HTTPS/CORS 源。
+- 适配 Next 静态多页面的本机冷启动路由；原生源文件仍须通过 Xcode 编译。
+- WKWebView 缺少 SubtleCrypto 时使用同强度 Noble PBKDF2，保留安全随机盐、旧密码验证与失败等待；
+  没有安全随机源时拒绝设置。浏览器 PWA 原有 WebCrypto 要求不变。
+- 配置/片源 JSON 与包内源码归档通过 App 私有缓存和系统分享面板导出，不自动上传。
+  保留 AGPL/上游声明，附新增依赖许可证；源码归档采用原子替换并排除签名及构建文件。
+- iOS 工程沿用 LibreTV 图标、深色启动背景和横竖屏，包含文件 API 的隐私用途声明；未加入 HTTP 放行、
+  远程代码更新、后台下载或新的广告分析模块。
+- 已完成 663 项测试、本地资源构建与 SPM 同步、原全栈构建以及 9 组本地资源浏览器模拟验证。
+  未完成 Xcode 编译、苹果签名、IPA 和 iPhone 实测，见[本地版验证](docs/native-validation.zh-CN.md)。
+
 ## 2.20.2-personal.3 · 2026-10-23
 
 开发分支：`feat/iphone-quick-login`。在独立版基础上增加 iPhone 安装入口与本机界面锁。

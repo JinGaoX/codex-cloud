@@ -2,6 +2,8 @@
  * A device-only privacy lock for the standalone app, not server authentication or
  * encrypted storage. Never persist a plaintext PIN or send it over the network.
  */
+import { IS_NATIVE } from './runtime-mode';
+
 export const DEVICE_LOCK_STORAGE_KEY = 'libretv-device-lock-v1';
 export const DEVICE_LOCK_ATTEMPTS_KEY = 'libretv-device-lock-attempts-v1';
 export const DEVICE_LOCK_ITERATIONS = 210_000;
@@ -132,8 +134,12 @@ function validatePin(pin: string): void {
 }
 
 function webCrypto(): Crypto {
-  if (!globalThis.crypto?.subtle || !globalThis.crypto.getRandomValues) {
-    throw new DeviceLockError('crypto', '当前浏览器无法安全保存本机密码，请使用 Safari 打开 HTTPS 地址。');
+  // WKWebView's local capacitor:// origin may expose secure random bytes without
+  // SubtleCrypto. Only a bundled native build may use the equivalent JS KDF.
+  if (typeof globalThis.crypto?.getRandomValues !== 'function' || (!IS_NATIVE && !globalThis.crypto.subtle)) {
+    throw new DeviceLockError('crypto', IS_NATIVE
+      ? '当前设备无法安全保存本机密码，请重新打开应用后重试。'
+      : '当前浏览器无法安全保存本机密码，请使用 Safari 打开 HTTPS 地址。');
   }
   return globalThis.crypto;
 }
@@ -148,6 +154,15 @@ function unhex(value: string): ArrayBuffer {
 async function digest(pin: string, salt: string, iterations: number): Promise<string> {
   try {
     const crypto = webCrypto();
+    if (IS_NATIVE && !crypto.subtle) {
+      const [{ pbkdf2Async }, { sha256 }] = await Promise.all([
+        import('@noble/hashes/pbkdf2.js'), import('@noble/hashes/sha2.js'),
+      ]);
+      const bits = await pbkdf2Async(sha256, new TextEncoder().encode(pin), new Uint8Array(unhex(salt)), {
+        c: iterations, dkLen: 32, asyncTick: 8,
+      });
+      return hex(bits);
+    }
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
     const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unhex(salt), iterations }, key, 256);
     return hex(new Uint8Array(bits));

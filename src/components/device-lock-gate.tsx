@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { APP_BRAND } from '@/lib/app-brand';
-import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
 import { changeDevicePin, readDeviceLockState, setupDevicePin, verifyDevicePin } from '@/lib/device-lock';
 import { InstallAppButton } from './pwa-runtime';
 import { Spinner } from './states';
@@ -42,8 +42,10 @@ function StandaloneDeviceLock({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setStandalone(window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true);
+    if (!IS_NATIVE) {
+      setStandalone(window.matchMedia('(display-mode: standalone)').matches ||
+        (navigator as Navigator & { standalone?: boolean }).standalone === true);
+    }
     readState();
   }, [readState]);
 
@@ -121,7 +123,7 @@ function StandaloneDeviceLock({ children }: { children: ReactNode }) {
               <p className="text-sm leading-6 text-muted mb-5">
                 {phase === 'setup' ? '无需注册账号。设置6位数字密码，下次打开时用它进入。' : '输入你在这台设备上设置的6位数字密码。'}
               </p>
-              {phase === 'setup' && !standalone && (
+              {phase === 'setup' && !IS_NATIVE && !standalone && (
                 <div className="rounded-lg bg-accent/10 border border-accent/20 p-3 mb-5 text-sm leading-6">
                   <p className="text-content">建议先添加到主屏幕，再从图标打开并设置密码。</p>
                   <p className="text-muted mt-1">Safari 与主屏幕 App 的密码、收藏和历史可能独立保存。</p>
@@ -148,11 +150,14 @@ function StandaloneDeviceLock({ children }: { children: ReactNode }) {
           )}
           {phase !== 'checking' && <ForgotPinNote />}
         </section>
-        <div className="flex items-center justify-between gap-4 mt-5">
-          <a href="/install.html" className="text-sm text-accent underline underline-offset-4">添加到 iPhone 主屏幕</a>
-          <InstallAppButton />
-        </div>
-        <p className="text-xs leading-6 text-faint mt-4">本机密码只锁定当前设备的应用界面，不加密本机记录。安装网址的访问验证由托管平台管理。</p>
+        {!IS_NATIVE && (
+          <div className="flex items-center justify-between gap-4 mt-5">
+            <a href="/install.html" className="text-sm text-accent underline underline-offset-4">添加到 iPhone 主屏幕</a>
+            <InstallAppButton />
+          </div>
+        )}
+        {IS_NATIVE && <p className="text-xs leading-6 text-muted mt-5">程序已安装在本机，无需登录在线账号。搜索和播放需要联网访问你配置的片源。</p>}
+        <p className="text-xs leading-6 text-faint mt-4">本机密码只锁定当前设备的应用界面，不加密本机记录。{!IS_NATIVE && '安装网址的访问验证由托管平台管理。'}</p>
       </div>
     </main>
   );
@@ -236,7 +241,7 @@ export function DeviceLockSettings() {
           </button>
         </form>
       </section>
-      <p className="text-xs leading-6 text-faint">此密码不加密本机数据，也不替代安装网址的访问验证。密码不会随配置导入或导出。</p>
+      <p className="text-xs leading-6 text-faint">{IS_NATIVE ? '此密码不加密本机数据。' : '此密码不加密本机数据，也不替代安装网址的访问验证。'}密码不会随配置导入或导出。</p>
       <ForgotPinNote />
     </div>
   );
@@ -276,7 +281,9 @@ function ForgotPinNote() {
   return (
     <details className="mt-5 text-xs leading-6 text-muted">
       <summary className="cursor-pointer py-1">忘记密码？</summary>
-      <p className="mt-2">密码无法找回。如需重新设置，需要在系统或浏览器中清除此网站的本机数据；这会丢失本机配置、收藏和观看历史。已有导出备份可在重新进入后导入。</p>
+      <p className="mt-2">{IS_NATIVE
+        ? '密码无法找回。删除 App 及其本机数据后重新安装可重新设置，但会丢失本机配置、收藏和观看历史。已有导出备份可在重新进入后导入。'
+        : '密码无法找回。如需重新设置，需要在系统或浏览器中清除此网站的本机数据；这会丢失本机配置、收藏和观看历史。已有导出备份可在重新进入后导入。'}</p>
     </details>
   );
 }

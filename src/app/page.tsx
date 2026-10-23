@@ -17,7 +17,7 @@ import { EmptyState } from '@/components/states';
 import { Icon } from '@/components/icon';
 import { SiteFooter } from '@/components/site-footer';
 import { APP_BRAND } from '@/lib/app-brand';
-import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
 import { DirectMediaEntry } from '@/components/direct-media-entry';
 
 /**
@@ -212,7 +212,7 @@ function HomeContent() {
           {!urlQuery && (
             <header className="text-center mb-6">
               <h1 className="text-4xl sm:text-5xl font-bold brand-gradient">{APP_BRAND.name}</h1>
-              {IS_STANDALONE && <p className="text-xs text-muted mt-3">手机独立版 · 搜索与记录都在本机</p>}
+              {IS_STANDALONE && <p className="text-xs text-muted mt-3">{IS_NATIVE ? '本机安装版 · 配置和观看记录保存在手机' : '手机独立版 · 搜索与记录都在本机'}</p>}
             </header>
           )}
           {urlQuery && <h1 className="sr-only">{APP_BRAND.name} 视频搜索</h1>}
@@ -464,7 +464,7 @@ function NoSourceGuide({ hasSources = false }: { hasSources?: boolean }) {
           <>
             LibreTV 不内置任何采集站。点击右上角「设置 → 添加 API」，填入一个
             Apple CMS 采集站地址（如 <code className="text-accent text-xs">https://example.com/api.php/provide/vod</code>），
-            勾选后即可开始搜索。{IS_STANDALONE && ' 手机独立版需要该接口允许浏览器直接访问。'}
+            勾选后即可开始搜索。{IS_STANDALONE && (IS_NATIVE ? ' 此版本需要接口支持 HTTPS 与跨域访问。' : ' 手机独立版需要该接口允许浏览器直接访问。')}
           </>
         )}
       </p>

@@ -4,7 +4,8 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../out');
+const native = process.argv.includes('--native');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), native ? '../native-dist' : '../out');
 const port = Number(process.env.STANDALONE_PORT || 8080);
 const host = process.env.STANDALONE_HOST || '127.0.0.1';
 const types = { '.html': 'text/html; charset=utf-8', '.txt': 'text/x-component',
@@ -12,7 +13,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.txt': 'text/x-component',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.png': 'image/png', '.ico': 'image/x-icon', '.svg': 'image/svg+xml',
   '.mp4': 'video/mp4', '.gz': 'application/gzip', '.mobileconfig': 'application/x-apple-aspen-config' };
-if (!existsSync(path.join(root, 'index.html'))) throw new Error('Run npm run build:iphone first.');
+if (!existsSync(path.join(root, 'index.html'))) throw new Error(`Run npm run ${native ? 'build:native' : 'build:iphone'} first.`);
 const server = http.createServer((req, res) => {
   let pathname;
   try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
@@ -36,6 +37,6 @@ const server = http.createServer((req, res) => {
   res.writeHead(match ? 206 : 200, headers);
   if (req.method === 'HEAD') res.end(); else createReadStream(file, { start, end }).pipe(res);
 });
-server.listen(port, host, () => console.log(`Standalone static preview: http://${host}:${port}`));
+server.listen(port, host, () => console.log(`${native ? 'Native bundle browser preview (not WKWebView)' : 'Standalone static preview'}: http://${host}:${port}`));
 process.on('SIGTERM', () => server.close());
 process.on('SIGINT', () => server.close());

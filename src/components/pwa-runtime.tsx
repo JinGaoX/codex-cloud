@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { APP_BRAND } from '@/lib/app-brand';
-import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
 import { Drawer } from './drawer';
 
 function isStandalone() {
@@ -18,6 +18,10 @@ type InstallPromptEvent = Event & {
 
 /** Safari has no install API: keep the real Share → Add to Home Screen instructions available. */
 export function InstallAppButton() {
+  return IS_NATIVE ? null : <WebInstallAppButton />;
+}
+
+function WebInstallAppButton() {
   const [standalone, setStandalone] = useState(true);
   const [open, setOpen] = useState(false);
   const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null);
@@ -99,6 +103,32 @@ export function InstallAppButton() {
 
 /** Server mode caches public assets; the standalone build also saves its public static shell. */
 export function PwaRuntime() {
+  return IS_NATIVE ? <NativeConnectivityStatus /> : <WebPwaRuntime />;
+}
+
+/** Native resources ship inside the app; no web worker or online update is needed. */
+function NativeConnectivityStatus() {
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const sync = () => setOffline(!navigator.onLine);
+    sync();
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, []);
+
+  if (!offline) return null;
+  return (
+    <div className="pwa-status fixed inset-x-0 bottom-0 z-40 bg-surface border-t border-line px-4 py-2 text-center text-sm text-muted" role="status">
+      已离线，可查看本机收藏、历史和设置；搜索和在线播放需联网。
+    </div>
+  );
+}
+
+function WebPwaRuntime() {
   const pathname = usePathname();
   const [offline, setOffline] = useState(false);
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null);
