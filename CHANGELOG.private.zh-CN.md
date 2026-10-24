@@ -11,8 +11,8 @@
 - 安装页只引导 Safari 添加主屏幕，不需 IPA、Mac 或周期签名；当前静态构建不再输出旧 WebClip 描述文件。
 - 沿用完整应用缓存、聚合搜索失败隔离、MP4/HLS、本机 PIN、收藏、历史及配置备份。
   UI 与业务数据继续复用，非独立服务器版保留原导航。
-- 用户目前只有 iPhone，此前不云端部署要求仍保留；HTTPS 安装分发必须获得明确同意后才能发布。
-  源码、构建、浏览器验证和实际发布状态见[手机版验证](docs/mobile-pwa-validation.zh-CN.md)。
+- 用户本轮明确同意公开 HTTPS 静态托管，手机版已发布，无需 ChatGPT 登录；配置、收藏和历史仍保存在手机。
+  源码、构建、浏览器验证见[手机版验证](docs/mobile-pwa-validation.zh-CN.md)，准确发布提交和使用步骤见[发布记录](docs/iphone-pwa-release.zh-CN.md)。
 
 ## 2.20.2-personal.4 · 2026-10-23
 
