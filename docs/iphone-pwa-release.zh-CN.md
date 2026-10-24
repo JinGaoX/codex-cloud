@@ -33,10 +33,13 @@
 程序完整缓存后不依赖 Windows 开机；搜索与在线播放仍需网络，更新或缓存丢失时仍需安装来源。
 PWA 不需要 Mac、IPA 或每 7 天签名。
 
-## GitHub 备份衔接
+## GitHub 备份
 
-目标为用户账号下独立私人仓库 `JinGaoX/libretv-personal`，不修改官方仓库或其他项目。
-首次实际创建尝试返回 `Resource not accessible by integration (createRepository)`：
-现有连接可写入仓库，但不能创建仓库，需要用户在手机 GitHub 创建该空仓库后上传。
-不要求用户发送密码、令牌或私钥。
-本地另有完整 Git bundle 和源码 ZIP；后续上传需核对远端分支，不能把准备好文件当作 GitHub 已备份成功。
+已备份至 https://github.com/JinGaoX/codex-cloud ，原有公开仓库，上传前已确认没有任何远端引用。
+用户在新建仓库权限不足后，明确授权可使用自己的任意空仓库，因此没有再次要求用户手动建仓库。
+没有修改官方仓库或覆盖任何已有项目；用户手机上的片源、密码、收藏和历史没有上传。
+
+完整备份包含 7 个分支和 66 个上游标签，原子推送后逐项核对远端提交。
+`main` 为个人版最新源码，官方基线保存在 `upstream-baseline`。
+本文件及备份说明的后续文档提交也同步到 `main` 和 `feat/iphone-mobile-pwa`，不改变上述已发布程序。
+恢复及后续开发见[GitHub 备份说明](github-backup.zh-CN.md)。

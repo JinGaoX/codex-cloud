@@ -1,0 +1,46 @@
+# GitHub 备份与后续开发
+
+日期：2026-10-24。
+
+仓库：https://github.com/JinGaoX/codex-cloud
+
+用户授权在无法新建仓库时，使用自己的任意空仓库。现有连接创建仓库返回权限不足，
+因此使用已经存在的 `codex-cloud`。上传前已通过完整 `git ls-remote` 确认仓库没有引用，
+而非仅依据仓库显示的 0 KB 判断。该仓库原本公开，备份时保留公开可见性。
+没有修改 LibreSpark/LibreTV 官方仓库或覆盖其他用户项目。
+
+## 保存范围
+
+- `main`：当前个人 iPhone PWA 与最新开发文档。
+- `feat/iphone-mobile-pwa`：当前手机 App 布局开发分支。
+- `feat/iphone-local-native`：本地 Capacitor iOS 工程，未宣称已生成 IPA 或 APK。
+- `feat/iphone-quick-login`、`feat/iphone-standalone`、`feat/private-iphone-pwa`：此前各阶段。
+- `upstream-baseline`：官方基线 `f01d331e9ec7b5c1cc0822747cdd4c486601dbc2`。
+- 66 个上游版本标签和相应完整 Git 历史。
+
+首次上传以单次原子推送创建全部 73 个引用，并要求目标引用原先不存在；上传后逐项核对哈希。
+此后文档更新以普通快进同步到 `main` 与当前开发分支。
+标签备份一次推送全部 66 个上游标签；GitHub 对一次推送超过 3 个标签不生成标签推送工作流事件，
+避免将备份标签当成新的容器发布。参考 [GitHub push 事件说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#push)。
+
+这是程序源码备份，不包含用户手机的 IndexedDB、片源配置、本机 PIN、收藏或观看历史；
+私人数据需在 App 设置内另行导出并自己保存，不要上传到公开仓库。
+原项目 AGPL、版权及上游来源声明保留；公开程序的对应源码归档仍由安装页提供。
+
+## 从 Windows 恢复
+
+安装 Git 与项目支持的 Node.js 后：
+
+```powershell
+git clone https://github.com/JinGaoX/codex-cloud.git LibreTV-personal
+cd LibreTV-personal
+git switch feat/iphone-mobile-pwa
+npm ci
+npm run build:iphone
+```
+
+`out/` 为静态 PWA 程序文件。默认 `npm run build` 构建原全栈版，含服务端依赖，二者用途不同。
+日常使用已安装的 iPhone PWA 不要求 Windows 开机；安装、更新及缓存恢复仍需可用的 HTTPS 程序来源。
+
+当前已发布程序源码提交为 `aca5d9649b7344f3896dff8d7a0c8fdc5100a250`；备份中其后的提交仅更新发布与备份文档。
+未来安卓可继续提取现有共享 Web 前端与 Capacitor 基础，本轮没有生成 Android APK。

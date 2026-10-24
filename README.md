@@ -1,11 +1,12 @@
 # LibreTV
 
-> **iPhone 15 Pro Max 手机独立版：`2.20.2-personal.2`**。运行 `npm ci`、`npm run build:iphone`
+> **iPhone 15 Pro Max 手机独立版：`2.20.2-personal.5`**。运行 `npm ci`、`npm run build:iphone`
 > 生成 `out/`，可用任意静态 HTTPS 分发；不需要运行 Node 后台。
 > 安装时下载程序，之后搜索/详情由手机直接访问用户配置的 HTTPS JSON API，视频直接播放。
 > [独立版安装与离线说明](docs/iphone-standalone-pwa.zh-CN.md) · [界面和支持范围](docs/STANDALONE-UI.zh-CN.md)
-> · [本轮验证](docs/standalone-validation.zh-CN.md)。默认 `npm run build` 仍构建下方的全栈版。
-> [打开 iPhone 独立版](https://libretv-pocket-15pm-c3d9.honestfairy18.chatgpt.site)；首次可能需要登录当前 ChatGPT 账号。
+> · [手机版验证](docs/mobile-pwa-validation.zh-CN.md)。默认 `npm run build` 仍构建下方的全栈版。
+> [打开 iPhone 独立版](https://libretv-pocket-15pm-c3d9.honestfairy18.chatgpt.site)：已公开发布，无需 ChatGPT 登录。
+> [GitHub 备份与恢复](docs/github-backup.zh-CN.md)：本仓库使用用户原本为空的公开仓库，`main` 为当前个人版，保留全部开发分支及上游历史。
 
 > **之前的全栈开发版：`2.20.2-personal.1`**，基于官方 `2.20.2`，保留 AGPL-3.0-or-later。
 > 已补充 iPhone PWA、原生 HLS/MP4、点播收藏与完整备份恢复；未内置影视源。
@@ -13,8 +14,8 @@
 > [iPhone 验收](docs/iphone-test-checklist.zh-CN.md) · [品牌配置](docs/PWA-AND-BRANDING.zh-CN.md) ·
 > [修改记录](CHANGELOG.private.zh-CN.md) · [验证结果](docs/validation.zh-CN.md) · [上游来源](UPSTREAM.md)
 >
-> 下方官网和演示站属于上游，不是本私人版本的已部署地址。项目需要云端 Next.js API，
-> 不能仅把页面上传到静态空间。当前长期部署和 iPhone 真机播放仍待完成。
+> 下方官网和演示站属于上游；本个人版 iPhone PWA 使用上方地址。默认全栈构建需要 Next.js API，
+> `build:iphone` 为手机直连片源的静态 PWA，不包含搜索或视频代理。真实 iPhone 播放仍待用户验收。
 
 LibreTV Next.js 迁移版：免费在线视频聚合搜索与观看平台。基于 Next.js 15（App Router）+ TypeScript + Tailwind CSS，播放内核为 ArtPlayer + hls.js，支持亮暗双主题。
 

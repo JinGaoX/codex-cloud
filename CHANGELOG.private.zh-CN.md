@@ -13,6 +13,8 @@
   UI 与业务数据继续复用，非独立服务器版保留原导航。
 - 用户本轮明确同意公开 HTTPS 静态托管，手机版已发布，无需 ChatGPT 登录；配置、收藏和历史仍保存在手机。
   源码、构建、浏览器验证见[手机版验证](docs/mobile-pwa-validation.zh-CN.md)，准确发布提交和使用步骤见[发布记录](docs/iphone-pwa-release.zh-CN.md)。
+- 用户进一步授权使用已有空仓库后，完整代码与开发历史备份至 `JinGaoX/codex-cloud`，保留其公开可见性；
+  已核对 7 个分支及 66 个上游标签，不上传本机私人数据。补充[恢复说明](docs/github-backup.zh-CN.md)。
 
 ## 2.20.2-personal.4 · 2026-10-23
 
