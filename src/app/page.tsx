@@ -17,8 +17,10 @@ import { EmptyState } from '@/components/states';
 import { Icon } from '@/components/icon';
 import { SiteFooter } from '@/components/site-footer';
 import { APP_BRAND } from '@/lib/app-brand';
-import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 import { DirectMediaEntry } from '@/components/direct-media-entry';
+import { ContinueWatching } from '@/components/continue-watching';
+import { requestAppPanel } from '@/lib/app-navigation';
 
 /**
  * 首页：搜索（URL ?s= 驱动，可后退/分享）+ 豆瓣推荐。
@@ -194,7 +196,7 @@ function HomeContent() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="relative flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+      <main className={cn('relative flex-1 max-w-6xl w-full mx-auto px-4', IS_STANDALONE ? 'py-5 sm:py-6' : 'py-6')}>
         {/* 首屏氛围渐变 */}
         {!urlQuery && (
           <div
@@ -208,12 +210,18 @@ function HomeContent() {
         )}
 
         {/* 搜索区 */}
-        <section className={cn('flex flex-col items-center', urlQuery ? 'mb-6' : 'mt-8 mb-8')}>
+        <section className={cn('flex flex-col items-center', urlQuery ? 'mb-6' : IS_STANDALONE ? 'mt-1 mb-6 sm:mt-3' : 'mt-8 mb-8')}>
           {!urlQuery && (
-            <header className="text-center mb-6">
-              <h1 className="text-4xl sm:text-5xl font-bold brand-gradient">{APP_BRAND.name}</h1>
-              {IS_STANDALONE && <p className="text-xs text-muted mt-3">{IS_NATIVE ? '本机安装版 · 配置和观看记录保存在手机' : '手机独立版 · 搜索与记录都在本机'}</p>}
-            </header>
+            IS_STANDALONE ? (
+              <header className="w-full max-w-2xl mb-4">
+                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-content">想看什么？</h1>
+                <p className="text-sm text-muted mt-2">找电影、追剧，接着上次继续看。</p>
+              </header>
+            ) : (
+              <header className="text-center mb-6">
+                <h1 className="text-4xl sm:text-5xl font-bold brand-gradient">{APP_BRAND.name}</h1>
+              </header>
+            )
           )}
           {urlQuery && <h1 className="sr-only">{APP_BRAND.name} 视频搜索</h1>}
           {/* 定位容器比胶囊宽一圈：浮层按它的宽度对齐，接缝处不会与胶囊边框错位 1px */}
@@ -232,7 +240,8 @@ function HomeContent() {
                   // 12px 圆角矩形（非胶囊）：收起态与展开态共用同一组上圆角，
                   // 展开时输入框这部分形状完全不发生变化，上下圆角也与下拉保持一致；
                   // 右侧与上下不留内边距，由搜索按钮拉伸填满、与搜索框边缘贴合
-                  'flex items-stretch min-h-12 pl-4 border',
+                  'flex items-stretch pl-4 border',
+                  IS_STANDALONE ? 'min-h-14' : 'min-h-12',
                   'transition-[background-color,border-color,border-radius] duration-200',
                   searchHistory.visible
                     ? // 展开时：外框（含上圆角）沿用输入框的聚焦样式不变，只把底边改为内部分隔线，
@@ -243,8 +252,11 @@ function HomeContent() {
               >
                 <input
                   ref={inputRef}
-                  className="flex-1 min-w-0 pr-2 bg-transparent text-sm text-content placeholder:text-faint focus:outline-none"
+                  className="flex-1 min-w-0 pr-2 bg-transparent text-base sm:text-sm text-content placeholder:text-faint focus:outline-none"
                   placeholder="输入影片名称..."
+                  enterKeyHint="search"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   value={input}
                   maxLength={100}
                   onChange={(e) => {
@@ -267,7 +279,7 @@ function HomeContent() {
                 {input && (
                   <button
                     type="button"
-                    className="shrink-0 self-center mr-1 p-1.5 rounded-full text-faint hover:text-content hover:bg-hover transition-colors"
+                    className="shrink-0 self-center mr-1 min-w-11 min-h-11 inline-flex items-center justify-center rounded-full text-faint hover:text-content hover:bg-hover transition-colors"
                     onClick={() => {
                       setInput('');
                       searchHistory.resetActive();
@@ -283,7 +295,7 @@ function HomeContent() {
                 <button
                   type="submit"
                   className={cn(
-                    'btn-primary shrink-0 px-4 font-medium transition-[background-color,filter] active:brightness-90',
+                    'btn-primary shrink-0 min-h-12 px-4 font-medium transition-[background-color,filter] active:brightness-90',
                     '!rounded-l-none',
                     searchHistory.visible ? '!rounded-tr-xl !rounded-br-none' : '!rounded-r-xl'
                   )}
@@ -411,8 +423,9 @@ function HomeContent() {
 
         {IS_STANDALONE && !urlQuery && (
           <>
-            <DirectMediaEntry />
+            <ContinueWatching />
             {selectedSources.length === 0 && <NoSourceGuide hasSources={customAPIs.length > 0 || envSources.length > 0} />}
+            <DirectMediaEntry />
           </>
         )}
 
@@ -454,6 +467,23 @@ function ResultsSkeleton() {
 
 /** 无点播源 / 未勾选点播源时的引导（替代旧版首屏静默空白） */
 function NoSourceGuide({ hasSources = false }: { hasSources?: boolean }) {
+  if (IS_STANDALONE) {
+    return (
+      <section className="w-full max-w-2xl mx-auto mb-5 rounded-2xl border border-line bg-card p-5 sm:p-6" aria-label="连接片源">
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0"><Icon name="link" /></div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold text-content">{hasSources ? '选择要搜索的片源' : '连接你的片库'}</h2>
+            <p className="text-sm text-muted leading-6 mt-1">{hasSources ? '打开设置，勾选至少一个点播源，就可以开始搜索。' : '添加你有权使用的影视 API，电影和剧集会从这里开始。'}</p>
+          </div>
+        </div>
+        <button type="button" className="btn-primary min-h-12 w-full mt-4" onClick={() => requestAppPanel('settings')}>
+          <Icon name={hasSources ? 'gear' : 'plus'} className="w-4 h-4" />打开设置
+        </button>
+        <p className="text-xs text-faint leading-5 mt-3">不内置片源。请使用允许手机直接访问的 HTTPS Apple CMS JSON API。</p>
+      </section>
+    );
+  }
   return (
     <div className="border border-dashed border-line rounded-xl p-10 text-center max-w-lg mx-auto">
       <h3 className="text-content font-medium mb-2">{hasSources ? '尚未勾选点播源' : '先添加一个点播源'}</h3>
@@ -464,7 +494,7 @@ function NoSourceGuide({ hasSources = false }: { hasSources?: boolean }) {
           <>
             LibreTV 不内置任何采集站。点击右上角「设置 → 添加 API」，填入一个
             Apple CMS 采集站地址（如 <code className="text-accent text-xs">https://example.com/api.php/provide/vod</code>），
-            勾选后即可开始搜索。{IS_STANDALONE && (IS_NATIVE ? ' 此版本需要接口支持 HTTPS 与跨域访问。' : ' 手机独立版需要该接口允许浏览器直接访问。')}
+            勾选后即可开始搜索。
           </>
         )}
       </p>

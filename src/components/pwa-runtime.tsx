@@ -65,7 +65,7 @@ function WebInstallAppButton() {
               <li>确认名称并添加，然后从主屏幕图标启动，即可以独立界面使用。</li>
             </ol>
             <p className="mt-3">已安装后，请从主屏幕打开。Safari 标签页仍会显示浏览器工具栏。{IS_STANDALONE && '从主屏幕首次启动时也请联网，等底部“正在保存应用”提示消失后再离线使用；Safari 与主屏幕的缓存可能独立。'}</p>
-            {IS_STANDALONE && <a className="inline-block mt-3 text-accent underline underline-offset-4" href="/install.html">完整安装步骤与备用桌面图标</a>}
+            {IS_STANDALONE && <a className="inline-block mt-3 text-accent underline underline-offset-4" href="/install.html">查看完整安装步骤</a>}
           </section>
           <section>
             <h3 className="font-semibold text-content mb-2">安卓 / 其他设备</h3>

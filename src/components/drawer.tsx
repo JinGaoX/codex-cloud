@@ -169,6 +169,7 @@ export function Drawer({
       )}
       <div
         ref={panelRef}
+        data-app-drawer-panel
         role="dialog"
         aria-modal={modal || undefined}
         aria-label={title}

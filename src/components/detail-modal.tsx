@@ -145,7 +145,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/80 py-10 px-4 animate-fade-in"
+      className="app-detail-overlay fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/80 py-10 px-4 animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -153,12 +153,12 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="bg-surface-raised rounded-xl w-full max-w-3xl shadow-2xl animate-slide-up outline-none"
+        className="app-detail-panel bg-surface-raised rounded-xl w-full max-w-3xl shadow-2xl animate-slide-up outline-none"
         role="dialog"
         aria-modal="true"
         aria-label={`${item.name} 详情`}
       >
-        <div className="flex items-start justify-between gap-4 p-5 pb-3 border-b border-line">
+        <div className="app-detail-header flex items-start justify-between gap-4 p-5 pb-3 border-b border-line">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-content break-words">{item.name}</h2>
             <span className="text-sm text-faint">{item.sourceName}</span>
@@ -178,7 +178,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
           </button>
         </div>
 
-        <div className="p-5 pt-4">
+        <div className="app-detail-body p-5 pt-4">
           {loading && <LoadingState label="正在获取剧集信息..." />}
 
           {!loading && error && <ErrorState message={error || '获取失败'} />}

@@ -90,6 +90,73 @@ header.sticky.top-0 { padding-top: env(safe-area-inset-top); }
 
 .pwa-status { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
 
+.app-shell-mode button, .app-shell-mode a, .app-shell-mode summary {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  .app-shell-mode input[aria-label="搜索影片"] { font-size: 16px; }
+  .app-shell-mode .btn, .app-shell-mode [role="tab"],
+  .app-shell-mode [data-app-drawer-panel] button[aria-label="关闭"],
+  .app-shell-mode .app-detail-header button {
+    min-height: 44px;
+  }
+  .app-shell-mode [data-app-drawer-panel] button[aria-label="关闭"],
+  .app-shell-mode .app-detail-header button[aria-label="关闭"],
+  .app-shell-mode header.sticky button[aria-label],
+  .app-shell-mode header.sticky a[aria-label] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-shell-mode:has([data-mobile-tab-bar]) {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+  .app-shell-mode:has([data-mobile-tab-bar]):has(.pwa-status) {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom));
+  }
+  .app-shell-mode:has([data-mobile-tab-bar]) .pwa-status {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: 0.5rem;
+    font-size: 12px;
+  }
+  .app-shell-mode [data-app-drawer-panel] { max-width: none; border-left: 0; }
+  .app-shell-mode .app-detail-overlay {
+    align-items: flex-end;
+    overflow: hidden;
+    padding: max(12px, env(safe-area-inset-top)) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
+  .app-shell-mode .app-detail-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top)));
+    border-radius: 24px 24px 0 0;
+    overflow: hidden;
+  }
+  .app-shell-mode .app-detail-header { flex-shrink: 0; padding: 16px; gap: 8px; }
+  .app-shell-mode .app-detail-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 16px max(24px, env(safe-area-inset-bottom));
+  }
+  .app-shell-mode .art-control-playAndPause,
+  .app-shell-mode .art-control-setting,
+  .app-shell-mode .art-control-fullscreenWeb,
+  .app-shell-mode .art-control-fullscreen { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell-mode *, .app-shell-mode *::before, .app-shell-mode *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Full-height fixed drawers do not inherit the body's safe-area padding. */
 [role="dialog"].absolute.right-0.top-0.h-full {
   padding-top: env(safe-area-inset-top);

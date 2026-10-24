@@ -18,7 +18,6 @@ function run(args, cwd = root) {
   if (result.status !== 0) process.exit(result.status || 1);
 }
 
-if (!native) run(['scripts/prepare-iphone-shortcut.mjs']);
 run(['scripts/source-distribution.mjs']);
 rmSync(stage, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
@@ -27,6 +26,8 @@ for (const entry of ['src', 'public', 'package.json', 'package-lock.json', 'next
   if (existsSync(path.join(root, entry))) cpSync(path.join(root, entry), path.join(stage, entry), { recursive: true });
 }
 rmSync(path.join(stage, 'src/app/api'), { recursive: true, force: true });
+// The current iPhone installer is Safari Add to Home Screen, with no profile.
+rmSync(path.join(stage, 'public/LibreTV.mobileconfig'), { force: true });
 if (native) {
   // A native app ships its shell; it has no website installer, hosting auth or SW update path.
   for (const name of ['install.html', 'LibreTV.mobileconfig', 'sw.js', 'sw-standalone.js', 'offline.html']) {
@@ -43,7 +44,7 @@ if (native) {
   }, null, 2) + '\n');
   console.log(`Native local app exported to ${output}; bundle these files with Capacitor. No IPA has been compiled or signed.`);
 } else {
-  writeFileSync(path.join(output, '_headers'), '/sw-standalone.js\n  Cache-Control: no-store\n  Service-Worker-Allowed: /\n/manifest.webmanifest\n  Cache-Control: no-cache\n/LibreTV.mobileconfig\n  Content-Type: application/x-apple-aspen-config\n  Content-Disposition: attachment; filename="LibreTV.mobileconfig"\n  Cache-Control: no-store\n/*\n  X-Content-Type-Options: nosniff\n');
+  writeFileSync(path.join(output, '_headers'), '/sw-standalone.js\n  Cache-Control: no-store\n  Service-Worker-Allowed: /\n/manifest.webmanifest\n  Cache-Control: no-cache\n/*\n  X-Content-Type-Options: nosniff\n');
   run(['scripts/prepare-standalone-pwa.mjs', output]);
   console.log(`Standalone iPhone PWA exported to ${output}; no Next API runtime is included.`);
 }

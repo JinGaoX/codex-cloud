@@ -4,6 +4,7 @@ import { Providers } from '@/components/providers';
 import { PwaRuntime } from '@/components/pwa-runtime';
 import { DeviceLockGate } from '@/components/device-lock-gate';
 import { APP_BRAND } from '@/lib/app-brand';
+import { IS_STANDALONE } from '@/lib/runtime-mode';
 import type { CSSProperties } from 'react';
 
 export const metadata: Metadata = {
@@ -59,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>
+      <body className={IS_STANDALONE ? 'app-shell-mode' : undefined}>
         <Providers><DeviceLockGate>{children}</DeviceLockGate></Providers>
         <PwaRuntime />
       </body>

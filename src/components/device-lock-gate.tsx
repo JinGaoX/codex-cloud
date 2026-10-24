@@ -157,7 +157,7 @@ function StandaloneDeviceLock({ children }: { children: ReactNode }) {
           </div>
         )}
         {IS_NATIVE && <p className="text-xs leading-6 text-muted mt-5">程序已安装在本机，无需登录在线账号。搜索和播放需要联网访问你配置的片源。</p>}
-        <p className="text-xs leading-6 text-faint mt-4">本机密码只锁定当前设备的应用界面，不加密本机记录。{!IS_NATIVE && '安装网址的访问验证由托管平台管理。'}</p>
+        <p className="text-xs leading-6 text-faint mt-4">本机密码只锁定当前设备的应用界面，不加密本机记录。请定期导出备份。</p>
       </div>
     </main>
   );
@@ -241,7 +241,7 @@ export function DeviceLockSettings() {
           </button>
         </form>
       </section>
-      <p className="text-xs leading-6 text-faint">{IS_NATIVE ? '此密码不加密本机数据。' : '此密码不加密本机数据，也不替代安装网址的访问验证。'}密码不会随配置导入或导出。</p>
+      <p className="text-xs leading-6 text-faint">此密码不加密本机数据，也不会随配置导入或导出。</p>
       <ForgotPinNote />
     </div>
   );
