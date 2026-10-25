@@ -1,7 +1,8 @@
 # iPhone 15 Pro Max 独立版 PWA
 
-当前版本：`2.20.2-personal.5`，手机 App 布局。用户已同意公开 HTTPS 静态托管，安装入口：
-https://libretv-pocket-15pm-c3d9.honestfairy18.chatgpt.site 。无需 ChatGPT 登录，准确发布提交见[发布记录](iphone-pwa-release.zh-CN.md)。
+当前版本：`2.20.2-personal.6`，手机 App 布局。用户已同意公开 HTTPS 静态托管，当前安装入口：
+https://jingaox.github.io/codex-cloud/ 。无需 ChatGPT 登录，故障处理及准确来源见[托管恢复记录](pwa-hosting-recovery.zh-CN.md)。
+此前 `chatgpt.site` 入口保留，用户曾遇到平台 Cloudflare 拦截；旧数据仍属于旧域，不会自动搬到新域。
 
 此构建把公开应用界面、搜索与详情请求逻辑放在设备端，不运行 Next.js API、搜索聚合服务器或视频代理。
 首次安装/更新使用 HTTPS 静态网址分发应用文件；本机缓存完成后，电脑和静态网址暂时不可访问时，

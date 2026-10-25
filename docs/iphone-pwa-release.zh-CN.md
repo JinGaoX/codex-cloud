@@ -1,5 +1,8 @@
 # iPhone PWA 发布记录
 
+当前版本已更新为 `2.20.2-personal.6`，安装入口改为 GitHub Pages，见[托管恢复记录](pwa-hosting-recovery.zh-CN.md)。
+以下保留 `personal.5` 的准确历史发布信息。
+
 日期：2026-10-24；版本：`2.20.2-personal.5`。
 
 安装地址：https://libretv-pocket-15pm-c3d9.honestfairy18.chatgpt.site

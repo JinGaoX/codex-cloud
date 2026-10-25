@@ -2,6 +2,14 @@
 
 日期：2026-10-25；版本：`2.20.2-personal.6`。
 
+当前安装入口：https://jingaox.github.io/codex-cloud/
+
+账号侧已启用 Pages，API 显示 `built` 且来源为 `gh-pages /`。
+匿名访问首页、watch 目录、安装页、manifest、独立 worker、Apple 图标及对应源码均 HTTP 200，
+SHA-256 与本次静态构建一致。程序源码提交 `70a657a7f450a99af99b1ce997de1504e0c1e774`，
+静态发布分支提交 `2b9b4807750f8c81ad9342ca06c3409a9123827f`。
+本说明之后的文档提交不改变该程序，真实 iPhone 上的原故障尚待用户复测。
+
 用户反馈：主屏幕安装后，添加 API 并搜索时出现 Cloudflare “Sorry, you have been blocked”，
 随后重开也显示该页面。截图的 Ray ID 为 `a4fa851d09ae0a82`。
 
@@ -23,13 +31,13 @@
 当前连接具备代码/工作流写入权限，但缺少首次启用 Pages 所需的 `pages` 与 `administration` 权限。
 官方 configure-pages 对自动启用还要求不同于默认 `GITHUB_TOKEN` 的授权令牌；本轮不索取或另造令牌。
 
-文件准备及验证完成后，用户只需用手机操作一次：
+本次已完成首次开通。以后需要重建入口时，账号拥有者可用手机操作：
 
 1. 打开 https://github.com/JinGaoX/codex-cloud/settings/pages ，登录自己的 GitHub 账号。
 2. Source 选 **Deploy from a branch**（从分支部署）。
 3. Branch 选 **gh-pages**，目录选 **/(root)**，点 **Save**。
-4. 等 GitHub 显示已发布地址，再验证。预期地址为 `https://jingaox.github.io/codex-cloud/`；
-   没有启用和实际 HTTP 验证前，不表示该网址已上线。
+4. 等 GitHub 显示已发布地址，再验证 `https://jingaox.github.io/codex-cloud/`；
+   不应将仅准备好分支当成发布成功。
 
 这是使用 GitHub 提供的免费 HTTPS 子域，不购买域名，不运行搜索或视频代理。
 GitHub Pages 公开仓库可在免费方案使用；发布内容上限 1 GB、软性带宽限制约 100 GB/月、
