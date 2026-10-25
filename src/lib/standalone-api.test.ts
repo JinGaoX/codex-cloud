@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { standaloneApi, standaloneUrl } from './standalone-api';
+import { clearStandaloneDetailCache, standaloneApi, standaloneUrl } from './standalone-api';
 import type { SourceConfig, SourceSearchOutcome } from './types';
 
 // Deliberate test fixtures, not real content services or playable films.
@@ -11,7 +11,7 @@ const response = (data: unknown, init?: ResponseInit) => new Response(JSON.strin
 });
 
 beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { clearStandaloneDetailCache(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('独立 PWA 的直连网络边界', () => {
   it('status / login / logout 只返回本地状态，不请求任何服务器', async () => {
@@ -133,6 +133,168 @@ describe('独立 PWA 的直连网络边界', () => {
     expect(result.episodes).toEqual(['https://media.example.org/1.m3u8', 'https://media.example.org/2.mp4']);
     expect(result.videoInfo.sourceKey).toBe('good');
     expect(new URL(String(vi.mocked(fetch).mock.calls[0][0])).searchParams.get('ids')).toBe('1');
+  });
+
+  it('搜索已返回真实 HTTPS 剧集时，打开详情不重复请求接口', async () => {
+    vi.mocked(fetch).mockResolvedValue(response({ list: [{
+      ...vod(), vod_id: '1', vod_play_url: '第一集$https://media.example.org/1.m3u8#第二集$https://media.example.org/2.mp4',
+    }] }));
+    const search = await standaloneApi.search('测试影片', [good], false);
+    vi.mocked(fetch).mockRejectedValue(new TypeError('subsequent request failed'));
+    const detail = await standaloneApi.detail(search.list[0].vodId, good);
+    expect(detail.episodes).toEqual(['https://media.example.org/1.m3u8', 'https://media.example.org/2.mp4']);
+    expect(detail.videoInfo).toMatchObject({ title: '测试影片', sourceKey: 'good', sourceName: '测试源' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('搜索仅有摘要时仍请求详情，坏播放字段不破坏成功搜索', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(response({ list: [{ ...vod(), vod_play_url: 'not a playlist' }] }))
+      .mockResolvedValueOnce(response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/movie.mp4' }] }));
+    const search = await standaloneApi.search('测试影片', [good], false);
+    expect(search.list).toHaveLength(1);
+    expect(search.failures).toEqual([]);
+    expect((await standaloneApi.detail('1', good)).episodes).toEqual(['https://media.example.org/movie.mp4']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('成功详情可复用于播放页，调用方不能修改缓存中的剧集或元信息', async () => {
+    vi.mocked(fetch).mockResolvedValue(response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/movie.mp4' }] }));
+    const first = await standaloneApi.detail('1', good);
+    first.episodes[0] = 'https://changed.example.org/not-the-original.mp4';
+    first.videoInfo.title = 'changed title';
+    const second = await standaloneApi.detail('1', good);
+    second.episodes.length = 0;
+    expect((await standaloneApi.detail('1', good)).episodes).toEqual(['https://media.example.org/movie.mp4']);
+    expect((await standaloneApi.detail('1', good)).videoInfo.title).toBe('测试影片');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { ...good, key: 'another-key' },
+    { ...good, url: 'https://cms.example.org/api?token=changed-fixture' },
+    { ...good, name: '改名后的源' },
+  ])('按源配置隔离缓存，另一源或地址/元信息变化后重新请求：%j', async (source) => {
+    vi.mocked(fetch).mockImplementation(async () => response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/movie.mp4' }] }));
+    await standaloneApi.detail('1', good);
+    const detail = await standaloneApi.detail('1', source);
+    expect(detail.videoInfo).toMatchObject({ sourceKey: source.key, sourceName: source.name, sourceUrl: source.url });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('同一源不同影片 ID 不共享详情缓存', async () => {
+    vi.mocked(fetch).mockImplementation(async (raw) => {
+      const id = new URL(String(raw)).searchParams.get('ids');
+      return response({ list: [{ ...vod(Number(id)), vod_play_url: `正片$https://media.example.org/${id}.mp4` }] });
+    });
+    await standaloneApi.detail('1', good);
+    expect((await standaloneApi.detail('2', good)).episodes).toEqual(['https://media.example.org/2.mp4']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('到期后重新读取，缓存命中不会延长签名播放地址有效期', async () => {
+    vi.useFakeTimers();
+    vi.mocked(fetch).mockImplementation(async () => response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/movie.mp4' }] }));
+    await standaloneApi.detail('1', good);
+    await vi.advanceTimersByTimeAsync(119_000);
+    await standaloneApi.detail('1', good);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_001);
+    await standaloneApi.detail('1', good);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('网络失败不缓存，明确重试仍然会重新请求', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError('Load failed'))
+      .mockResolvedValueOnce(response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/movie.mp4' }] }));
+    await expect(standaloneApi.detail('1', good)).rejects.toThrow(/无法直接访问/);
+    expect((await standaloneApi.detail('1', good)).episodes).toEqual(['https://media.example.org/movie.mp4']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('冷启动详情网络失败时，可按已知标题搜索并恢复同一ID的实际HTTPS剧集', async () => {
+    vi.mocked(fetch).mockImplementation(async (raw) => {
+      const url = new URL(String(raw));
+      if (url.searchParams.has('ids')) throw new TypeError('Load failed');
+      return response({ list: [{ ...vod(), vod_id: '1', vod_play_url: '正片$https://media.example.org/movie.mp4' }] });
+    });
+    const detail = await standaloneApi.detail('1', good, undefined, '  测试影片  ');
+    expect(detail.episodes).toEqual(['https://media.example.org/movie.mp4']);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const recovery = new URL(String(vi.mocked(fetch).mock.calls[1][0]));
+    expect(recovery.origin).toBe('https://cms.example.org');
+    expect(recovery.searchParams.get('wd')).toBe('测试影片');
+    expect(recovery.searchParams.get('token')).toBe('fixture-only');
+    await standaloneApi.detail('1', good, undefined, '测试影片');
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('标题相同但ID不同时不把另一影片当作恢复结果', async () => {
+    vi.mocked(fetch).mockImplementation(async (raw) => {
+      if (new URL(String(raw)).searchParams.has('ids')) throw new TypeError('Load failed');
+      return response({ list: [{ ...vod(2), vod_play_url: '正片$https://media.example.org/different-film.mp4' }] });
+    });
+    await expect(standaloneApi.detail('1', good, undefined, '测试影片')).rejects.toThrow(/^无法直接访问该源/);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('已知标题的恢复搜索被取消时传播取消，不假成功或覆盖为原网络错误', async () => {
+    vi.mocked(fetch).mockImplementation(async (raw) => {
+      if (new URL(String(raw)).searchParams.has('ids')) throw new TypeError('Load failed');
+      return new Promise<Response>(() => {});
+    });
+    const controller = new AbortController();
+    const pending = standaloneApi.detail('1', good, controller.signal, '测试影片');
+    const expectation = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    controller.abort();
+    await expectation;
+  });
+
+  it('HTTP拒绝等明确接口错误不会触发标题恢复搜索', async () => {
+    vi.mocked(fetch).mockResolvedValue(response({ message: 'forbidden' }, { status: 403 }));
+    await expect(standaloneApi.detail('1', good, undefined, '测试影片')).rejects.toThrow('HTTP 403');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([undefined, '正片$http://media.example.org/insecure.mp4'])('缺少可用 HTTPS 剧集的返回不缓存：%s', async (playUrl) => {
+    vi.mocked(fetch).mockResolvedValueOnce(response({ list: [{ ...vod(), vod_play_url: playUrl }] }))
+      .mockResolvedValueOnce(response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/movie.mp4' }] }));
+    await expect(standaloneApi.detail('1', good)).rejects.toThrow(/独立版/);
+    await standaloneApi.detail('1', good);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('即使存在缓存，也尊重已取消的详情请求', async () => {
+    vi.mocked(fetch).mockResolvedValue(response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/movie.mp4' }] }));
+    await standaloneApi.detail('1', good);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(standaloneApi.detail('1', good, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('最多保留64条详情，超出后淘汰较早条目而不是无限占用手机内存', async () => {
+    vi.mocked(fetch).mockResolvedValue(response({ list: Array.from({ length: 65 }, (_, index) => ({
+      ...vod(index + 1), vod_play_url: `正片$https://media.example.org/${index + 1}.mp4`,
+    })) }));
+    await standaloneApi.search('测试影片', [good], false);
+    await standaloneApi.detail('2', good);
+    await standaloneApi.detail('65', good);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    vi.mocked(fetch).mockResolvedValue(response({ list: [{ ...vod(), vod_play_url: '正片$https://media.example.org/1.mp4' }] }));
+    await standaloneApi.detail('1', good);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('总大小约4MiB时提前淘汰大详情，避免仅按条数限制而积累巨量文本', async () => {
+    vi.mocked(fetch).mockImplementation(async (raw) => {
+      const id = Number(new URL(String(raw)).searchParams.get('ids'));
+      return response({ list: [{ ...vod(id), vod_content: 'x'.repeat(3 * 1024 * 1024), vod_play_url: `正片$https://media.example.org/${id}.mp4` }] });
+    });
+    await standaloneApi.detail('1', good);
+    await standaloneApi.detail('2', good);
+    await standaloneApi.detail('1', good);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it('不抓取详情网页，缺少直链时给出准确限制提示', async () => {

@@ -143,7 +143,10 @@ const serverApi = {
     return searchStream(wd, sources, filterAdult, onSource, signal);
   },
 
-  detail: (id: string, source: SourceConfig, signal?: AbortSignal) => {
+  detail: (id: string, source: SourceConfig, signal?: AbortSignal, titleHint?: string) => {
+    // The standalone transport can recover a browser-blocked detail via an exact-ID
+    // search. The server already reads details itself and needs no title hint.
+    void titleHint;
     const sp = new URLSearchParams({ id, source: JSON.stringify(source) });
     return request<VideoDetail>(`/api/detail?${sp.toString()}`, { signal });
   },

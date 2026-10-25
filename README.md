@@ -1,6 +1,6 @@
 # LibreTV
 
-> **iPhone 15 Pro Max 手机独立版：`2.20.2-personal.6`**。运行 `npm ci`、`npm run build:iphone`
+> **iPhone 15 Pro Max 手机独立版：`2.20.2-personal.7`**。运行 `npm ci`、`npm run build:iphone`
 > 生成 `out/`，可用任意静态 HTTPS 分发；不需要运行 Node 后台。
 > 安装时下载程序，之后搜索/详情由手机直接访问用户配置的 HTTPS JSON API，视频直接播放。
 > [独立版安装与离线说明](docs/iphone-standalone-pwa.zh-CN.md) · [界面和支持范围](docs/STANDALONE-UI.zh-CN.md)
@@ -9,6 +9,7 @@
 > [GitHub 备份与恢复](docs/github-backup.zh-CN.md)：本仓库使用用户原本为空的公开仓库，`main` 为当前个人版，保留全部开发分支及上游历史。
 > 用户真机遇到平台 Cloudflare 拦截后，新增独立搜索导航修复及 `npm run build:pages` 备用构建。
 > GitHub Pages 开通结果及本机数据保留步骤见[托管拦截恢复说明](docs/pwa-hosting-recovery.zh-CN.md)。旧 Site 保留，用户侧拦截是否解除仍需真机复测。
+> 搜索成功但详情被接口跨域限制时，复用实际剧集并按同源、同影片 ID 恢复，见[详情恢复说明](docs/source-detail-recovery.zh-CN.md)。
 
 > **之前的全栈开发版：`2.20.2-personal.1`**，基于官方 `2.20.2`，保留 AGPL-3.0-or-later。
 > 已补充 iPhone PWA、原生 HLS/MP4、点播收藏与完整备份恢复；未内置影视源。

@@ -118,7 +118,7 @@ function WatchContent() {
   // 详情查询：无 id（纯直连链接分享）时跳过
   const detailQuery = useQuery({
     queryKey: ['detail', sourceKey, vodId, source?.url],
-    queryFn: ({ signal }) => api.detail(vodId, source!, signal),
+    queryFn: ({ signal }) => api.detail(vodId, source!, signal, titleParam),
     enabled: Boolean(!isDirectMedia && source && vodId && verified),
     staleTime: 5 * 60_000,
   });

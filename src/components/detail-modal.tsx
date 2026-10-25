@@ -29,6 +29,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   const [detail, setDetail] = useState<VideoDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [reversed, setReversed] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -57,6 +58,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
     if (!item) {
       setDetail(null);
       setError('');
+      setLoading(false);
       return;
     }
     const source = resolveSource(store, item.sourceKey, {
@@ -64,6 +66,8 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
       name: item.sourceName,
     });
     if (!source) {
+      setDetail(null);
+      setLoading(false);
       setError('点播源配置不存在（可能已被删除），请在设置中重新添加');
       return;
     }
@@ -75,7 +79,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
     const controller = new AbortController();
     abortRef.current = controller;
     api
-      .detail(item.vodId, source, controller.signal)
+      .detail(item.vodId, source, controller.signal, item.name)
       .then((d) => { if (!controller.signal.aborted) setDetail(d); })
       .catch((err) => {
         if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) return;
@@ -84,7 +88,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item]);
+  }, [item, retryAttempt]);
 
   useEffect(() => {
     if (!item) return;
@@ -181,7 +185,13 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
         <div className="app-detail-body p-5 pt-4">
           {loading && <LoadingState label="正在获取剧集信息..." />}
 
-          {!loading && error && <ErrorState message={error || '获取失败'} />}
+          {!loading && error && (
+            <ErrorState
+              message={error || '获取失败'}
+              onRetry={() => setRetryAttempt((attempt) => attempt + 1)}
+              className="[&_button]:min-h-11 [&_button]:min-w-11"
+            />
+          )}
 
           {!loading && !error && detail && (
             <>

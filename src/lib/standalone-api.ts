@@ -13,6 +13,70 @@ const MAX_SEARCH_PAGES = 5;
 const SOURCE_CONCURRENCY = 4;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 const NETWORK_MESSAGE = '无法直接访问该源：可能是网络、证书或 CORS 跨域限制。独立版不会使用后台代理，请换用允许浏览器访问的 HTTPS API。';
+const DETAIL_CACHE_TTL_MS = 120_000;
+const DETAIL_CACHE_MAX_ENTRIES = 64;
+const DETAIL_CACHE_MAX_BYTES = 4 * 1024 * 1024;
+const detailCache = new Map<string, { detail: VideoDetail; expiresAt: number; bytes: number }>();
+let detailCacheBytes = 0;
+
+/** Memory only: URLs, source configuration and playback links never enter a shared or persistent cache. */
+export function clearStandaloneDetailCache(): void {
+  detailCache.clear();
+  detailCacheBytes = 0;
+}
+
+function detailCacheKey(id: string, source: SourceConfig): string {
+  return JSON.stringify([
+    standaloneUrl(source.url).href, source.key, id.trim(), source.name,
+    source.detail || '', source.isAdult === true,
+  ]);
+}
+
+function cloneDetail(detail: VideoDetail): VideoDetail {
+  return { episodes: [...detail.episodes], videoInfo: { ...detail.videoInfo } };
+}
+
+function removeCachedDetail(key: string): void {
+  const entry = detailCache.get(key);
+  if (!entry) return;
+  detailCacheBytes -= entry.bytes;
+  detailCache.delete(key);
+}
+
+function pruneDetailCache(): void {
+  const now = Date.now();
+  for (const [key, entry] of detailCache) {
+    if (entry.expiresAt <= now) removeCachedDetail(key);
+  }
+}
+
+function readCachedDetail(id: string, source: SourceConfig): VideoDetail | undefined {
+  pruneDetailCache();
+  const key = detailCacheKey(id, source);
+  const entry = detailCache.get(key);
+  if (!entry) return undefined;
+  // LRU order changes, but reading does not prolong the lifetime of a signed playback URL.
+  detailCache.delete(key);
+  detailCache.set(key, entry);
+  return cloneDetail(entry.detail);
+}
+
+function cacheDetail(id: string, source: SourceConfig, detail: VideoDetail): void {
+  const key = detailCacheKey(id, source);
+  const snapshot = cloneDetail(detail);
+  const bytes = new TextEncoder().encode(key).byteLength
+    + new TextEncoder().encode(JSON.stringify(snapshot)).byteLength;
+  pruneDetailCache();
+  removeCachedDetail(key);
+  if (bytes > DETAIL_CACHE_MAX_BYTES) return;
+  while (detailCache.size >= DETAIL_CACHE_MAX_ENTRIES || detailCacheBytes + bytes > DETAIL_CACHE_MAX_BYTES) {
+    const oldest = detailCache.keys().next().value;
+    if (oldest === undefined) break;
+    removeCachedDetail(oldest);
+  }
+  detailCache.set(key, { detail: snapshot, expiresAt: Date.now() + DETAIL_CACHE_TTL_MS, bytes });
+  detailCacheBytes += bytes;
+}
 
 /** Safari's standalone origin is HTTPS; mixed HTTP and embedded URL credentials cannot work reliably. */
 export function standaloneUrl(raw: string): URL {
@@ -126,6 +190,35 @@ function cmsUrl(raw: string, values: Record<string, string>): URL {
   return url;
 }
 
+function playableDetail(data: unknown, source: SourceConfig): VideoDetail {
+  const result = parseDetail(data, source);
+  const originalCount = result.episodes.length;
+  result.episodes = result.episodes.filter((url) => { try { standaloneUrl(url); return true; } catch { return false; } });
+  if (result.episodes.length === 0) {
+    throw new Error(originalCount > 0
+      ? '该源仅提供 HTTP 或无效播放地址，iPhone 独立版需要 HTTPS MP4/HLS，请切换其他源'
+      : '该源没有直接提供播放地址；独立版不抓取详情网页，请换用直接返回 HTTPS MP4/HLS 的 JSON API');
+  }
+  return result;
+}
+
+function warmSearchDetails(data: unknown, source: SourceConfig, retainedIds: Set<string>): void {
+  const list = (data as { list?: unknown } | null)?.list;
+  if (!Array.isArray(list)) return;
+  for (const raw of list) {
+    if (!raw || typeof raw !== 'object') continue;
+    const id = String((raw as Record<string, unknown>).vod_id ?? '').trim();
+    if (!id || !retainedIds.has(id)) continue;
+    try {
+      // Some videolist searches already contain complete episodes. Reuse only those
+      // actual HTTPS links; summary-only or malformed rows must not break a search.
+      cacheDetail(id, source, playableDetail({ list: [raw] }, source));
+    } catch {
+      // A later explicit detail request remains available for incomplete search rows.
+    }
+  }
+}
+
 async function mapConcurrent<T, R>(items: T[], concurrency: number, task: (item: T) => Promise<R>, signal?: AbortSignal): Promise<R[]> {
   const result: R[] = new Array(items.length);
   let cursor = 0;
@@ -173,6 +266,11 @@ async function sourceSearch(source: SourceConfig, wd: string, filterAdult: boole
       seen.add(item.vodId); return true;
     });
     const list = filterRelevantResults(filterAdultResults(deduplicated, filterAdult), wd);
+    const retainedIds = new Set(list.map((item) => item.vodId));
+    warmSearchDetails(first, source, retainedIds);
+    for (const page of remaining) {
+      if (page.status === 'fulfilled') warmSearchDetails(page.value, source, retainedIds);
+    }
     return finish({ ok: true, list, ...(partial ? { partial: true } : {}) });
   } catch (error) {
     ensureNotAborted(signal);
@@ -201,18 +299,38 @@ async function search(wd: string, sources: SourceConfig[], filterAdult: boolean,
   };
 }
 
-async function detail(id: string, source: SourceConfig, signal?: AbortSignal): Promise<VideoDetail> {
+async function detail(id: string, source: SourceConfig, signal?: AbortSignal, titleHint?: string): Promise<VideoDetail> {
+  ensureNotAborted(signal);
   if (!id.trim()) throw new Error('影片 ID 不能为空');
-  const data = await cmsJson(cmsUrl(source.url, { ac: 'videolist', ids: id.trim() }), signal);
-  const result = parseDetail(data, source);
-  const originalCount = result.episodes.length;
-  result.episodes = result.episodes.filter((url) => { try { standaloneUrl(url); return true; } catch { return false; } });
-  if (result.episodes.length === 0) {
-    throw new Error(originalCount > 0
-      ? '该源仅提供 HTTP 或无效播放地址，iPhone 独立版需要 HTTPS MP4/HLS，请切换其他源'
-      : '该源没有直接提供播放地址；独立版不抓取详情网页，请换用直接返回 HTTPS MP4/HLS 的 JSON API');
+  const cached = readCachedDetail(id, source);
+  if (cached) return cached;
+  try {
+    const data = await cmsJson(cmsUrl(source.url, { ac: 'videolist', ids: id.trim() }), signal);
+    ensureNotAborted(signal);
+    const result = playableDetail(data, source);
+    cacheDetail(id, source, result);
+    return result;
+  } catch (error) {
+    ensureNotAborted(signal);
+    const title = titleHint?.trim().slice(0, 100);
+    if (error instanceof Error && error.message === NETWORK_MESSAGE && title) {
+      try {
+        // Some sources expose full episodes in search but omit CORS headers on ids.
+        // A known title can recover that same exact item without guessing a URL or
+        // silently opening a different film with a similar name.
+        const outcome = await sourceSearch(source, title, false, signal);
+        ensureNotAborted(signal);
+        if (outcome.ok && outcome.list.some((item) => item.vodId === id.trim())) {
+          const recovered = readCachedDetail(id, source);
+          if (recovered) return recovered;
+        }
+      } catch {
+        ensureNotAborted(signal);
+        // Recovery is optional; preserve the original request error if it fails.
+      }
+    }
+    throw error;
   }
-  return result;
 }
 
 async function sourceList(raw: string): Promise<SourceListPayload> {
