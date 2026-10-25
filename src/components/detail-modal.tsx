@@ -39,6 +39,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   const detailIdentityRef = useRef('');
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const firstPreviewEpisode = detail?.episodes[0];
   const favorite = useLiveQuery(
     () => item ? db.favorites.get(favoriteKeyOf(item.sourceKey, item.vodId)).catch(() => undefined) : undefined,
     [item?.sourceKey, item?.vodId]
@@ -106,7 +107,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   useEffect(() => {
     setPreviewQuality(undefined);
     setResolutionLoading(false);
-    const firstEpisode = detail?.episodes[0];
+    const firstEpisode = firstPreviewEpisode;
     if (!item || !firstEpisode || detailIdentityRef.current !== `${item.sourceKey}:${item.vodId}`) return;
     const cached = readQuality(item.sourceKey, item.vodId);
     if (resolutionLabel(cached?.width, cached?.height)) return;
@@ -122,7 +123,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
       .catch(() => {})
       .finally(() => { if (!controller.signal.aborted) setResolutionLoading(false); });
     return () => controller.abort();
-  }, [item?.sourceKey, item?.vodId, detail?.episodes[0]]);
+  }, [item, firstPreviewEpisode]);
 
   useEffect(() => {
     if (!item) return;
