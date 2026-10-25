@@ -1,5 +1,7 @@
 # 手机 App 布局 PWA 验证
 
+本文保留 `personal.5` 的验证记录。最新 `personal.6` 的搜索导航修复、GitHub Pages 及线上结果见[托管恢复记录](pwa-hosting-recovery.zh-CN.md)。
+
 日期：2026-10-24；版本 `2.20.2-personal.5`；分支 `feat/iphone-mobile-pwa`。
 
 ## 已确认的实现与构建

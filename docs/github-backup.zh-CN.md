@@ -42,5 +42,8 @@ npm run build:iphone
 `out/` 为静态 PWA 程序文件。默认 `npm run build` 构建原全栈版，含服务端依赖，二者用途不同。
 日常使用已安装的 iPhone PWA 不要求 Windows 开机；安装、更新及缓存恢复仍需可用的 HTTPS 程序来源。
 
-当前已发布程序源码提交为 `aca5d9649b7344f3896dff8d7a0c8fdc5100a250`；备份中其后的提交仅更新发布与备份文档。
+当前 `personal.6` 已发布程序源码提交为 `70a657a7f450a99af99b1ce997de1504e0c1e774`；
+其后的提交仅记录托管恢复结果。`gh-pages` 保存适配项目路径的静态文件，当前安装地址为
+https://jingaox.github.io/codex-cloud/ ，故障及验证见[托管恢复记录](pwa-hosting-recovery.zh-CN.md)。
+本轮另增 `fix/pwa-hosting-recovery` 分支；原有全部开发分支、标签和官方基线仍保留。
 未来安卓可继续提取现有共享 Web 前端与 Capacitor 基础，本轮没有生成 Android APK。
