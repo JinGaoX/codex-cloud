@@ -3,6 +3,7 @@
  * 只放可公开的信息；修改名称/图标后重新构建，已安装的 iPhone 图标可能需重新添加。
  */
 import { IS_STANDALONE } from './runtime-mode';
+import { appPath } from './app-path';
 
 export const APP_BRAND = {
   name: IS_STANDALONE ? 'LibreTV 随身版' : 'LibreTV',
@@ -11,12 +12,12 @@ export const APP_BRAND = {
   themeColor: '#0b101a',
   backgroundColor: '#0b101a',
   // 公开的修改版源码地址；未指定仓库时由构建生成可下载的源码归档。
-  sourceUrl: process.env.NEXT_PUBLIC_SOURCE_URL || '/source-code.tar.gz',
+  sourceUrl: appPath(process.env.NEXT_PUBLIC_SOURCE_URL || '/source-code.tar.gz'),
   icons: {
-    favicon: '/favicon.ico',
-    apple: '/icons/apple-touch-icon.png',
-    small: '/icons/icon-192.png',
-    large: '/icons/icon-512.png',
+    favicon: appPath('/favicon.ico'),
+    apple: appPath('/icons/apple-touch-icon.png'),
+    small: appPath('/icons/icon-192.png'),
+    large: appPath('/icons/icon-512.png'),
   },
   colors: {
     lightAccent: '37 99 235',

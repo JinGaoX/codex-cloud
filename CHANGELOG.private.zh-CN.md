@@ -1,5 +1,20 @@
 # 私人 LibreTV 开发记录
 
+## 2.20.2-personal.6 · 2026-10-25
+
+修复分支：`fix/pwa-hosting-recovery`。
+
+- 针对用户添加 API 后搜索遇到 Cloudflare 拦截，检查站点仍公开且未停用，Worker 错误日志无对应事件；
+  不将未知 WAF 触发规则归因于密码、片源内容或某种网络环境。
+- 独立版搜索使用本机 History API 更新查询状态，避免 Next 路由为搜索词发起额外同源导航；
+  原全栈版路由不变，片源仍由手机直接请求。
+- 新增 `build:pages` 与 `preview:pages`，支持 GitHub 项目子路径、目录路由、图标/manifest/安装链接及精确资源缓存。
+  子路径 worker 不接管其他项目路径，不在激活时清理其他项目缓存；原 iPhone/native 构建继续使用根路径。
+- 准备公开仓库内 `gh-pages` 静态发布分支。首次启用 Pages 需要用户账号在设置完成，现有连接缺少 Pages/管理权限；
+  不把上传分支称为已发布成功，也不保证新入口在真实 iPhone 一定可用。
+- 保留原入口和本机数据；新域存储独立，恢复旧数据需原入口导出、新入口导入。
+  处理步骤见[托管拦截恢复说明](docs/pwa-hosting-recovery.zh-CN.md)。
+
 ## 2.20.2-personal.5 · 2026-10-24
 
 开发分支：`feat/iphone-mobile-pwa`。iPhone 回到 PWA，保留本地原生工程供未来安卓复用。

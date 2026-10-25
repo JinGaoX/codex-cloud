@@ -1,15 +1,16 @@
 import type { MetadataRoute } from 'next';
 export const dynamic = 'force-static';
 import { APP_BRAND } from '@/lib/app-brand';
+import { appPath } from '@/lib/app-path';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: '/',
+    id: appPath('/'),
     name: APP_BRAND.name,
     short_name: APP_BRAND.shortName,
     description: APP_BRAND.description,
-    start_url: '/',
-    scope: '/',
+    start_url: appPath('/'),
+    scope: appPath('/'),
     lang: 'zh-CN',
     display: 'standalone',
     orientation: 'any',

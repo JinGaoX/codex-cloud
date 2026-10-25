@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { APP_BRAND } from '@/lib/app-brand';
+import { appPath } from '@/lib/app-path';
 import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
 import { changeDevicePin, readDeviceLockState, setupDevicePin, verifyDevicePin } from '@/lib/device-lock';
 import { InstallAppButton } from './pwa-runtime';
@@ -127,7 +128,7 @@ function StandaloneDeviceLock({ children }: { children: ReactNode }) {
                 <div className="rounded-lg bg-accent/10 border border-accent/20 p-3 mb-5 text-sm leading-6">
                   <p className="text-content">建议先添加到主屏幕，再从图标打开并设置密码。</p>
                   <p className="text-muted mt-1">Safari 与主屏幕 App 的密码、收藏和历史可能独立保存。</p>
-                  <a href="/install.html" className="inline-block text-accent underline underline-offset-4 mt-2">查看 iPhone 安装步骤</a>
+                  <a href={appPath('/install.html')} className="inline-block text-accent underline underline-offset-4 mt-2">查看 iPhone 安装步骤</a>
                 </div>
               )}
               <form onSubmit={submit} aria-label={phase === 'setup' ? '设置本机密码' : '解锁应用'} className="space-y-4">
@@ -152,7 +153,7 @@ function StandaloneDeviceLock({ children }: { children: ReactNode }) {
         </section>
         {!IS_NATIVE && (
           <div className="flex items-center justify-between gap-4 mt-5">
-            <a href="/install.html" className="text-sm text-accent underline underline-offset-4">添加到 iPhone 主屏幕</a>
+            <a href={appPath('/install.html')} className="text-sm text-accent underline underline-offset-4">添加到 iPhone 主屏幕</a>
             <InstallAppButton />
           </div>
         )}

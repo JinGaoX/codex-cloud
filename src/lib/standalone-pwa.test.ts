@@ -25,7 +25,7 @@ function resourceResponse(body: string, url: string, redirected = false) {
   return response;
 }
 
-function worker(origin = 'https://app.example.test') {
+function worker(origin = 'https://app.example.test', basePath = '') {
   const listeners = new Map<string, (event: Record<string, unknown>) => void>();
   const cache = {
     match: vi.fn(async (key: string) => key.endsWith('.txt') ? new Response('static-rsc') : new Response(shell)),
@@ -46,8 +46,13 @@ function worker(origin = 'https://app.example.test') {
   const claim = vi.fn().mockResolvedValue(undefined);
   const source = readFileSync(resolve(process.cwd(), 'public/sw-standalone.js'), 'utf8')
     .replace('__LIBRETV_STANDALONE_BUILD__', 'test-build')
-    .replace('/*__LIBRETV_STANDALONE_PRECACHE__*/ []', JSON.stringify(precache))
-    .replace('/*__LIBRETV_STANDALONE_ROUTES__*/ {}', JSON.stringify(shellRoute));
+    .replace('/*__LIBRETV_APP_BASE_PATH__*/ \'\'', JSON.stringify(basePath))
+    .replace('/*__LIBRETV_STANDALONE_PRECACHE__*/ []', JSON.stringify(precache.map((entry) => ({ ...entry, url: basePath + entry.url }))))
+    .replace('/*__LIBRETV_STANDALONE_ROUTES__*/ {}', JSON.stringify(Object.fromEntries(
+      Object.entries(shellRoute).map(([key, value]) => [key, Object.fromEntries(
+        Object.entries(value).map(([kind, url]) => [kind, basePath + url])
+      )])
+    )));
   runInNewContext(source, {
     URL, Response, Headers, Uint8Array, crypto: webcrypto, caches, fetch,
     self: { location: { origin }, clients: { claim }, skipWaiting,
@@ -216,6 +221,41 @@ describe('standalone PWA complete app cache', () => {
     expect(w.skipWaiting).not.toHaveBeenCalled();
     w.listeners.get('message')!({ data: { type: 'ACTIVATE_UPDATE' } });
     expect(w.skipWaiting).toHaveBeenCalledOnce();
+  });
+
+  it('opens a project-scoped watch shell offline without sending its private query to the host', async () => {
+    const w = worker('https://account.github.io', '/codex-cloud');
+    await w.request('/codex-cloud/watch/?source=private&id=private', { mode: 'navigate' }).mock.calls[0][0];
+    expect(w.cache.match).toHaveBeenCalledWith('/codex-cloud/watch.html');
+    expect(w.fetch).not.toHaveBeenCalled();
+    expect(w.cache.put).not.toHaveBeenCalled();
+  });
+
+  it('leaves sibling project pages, lookalike prefixes and APIs outside a project worker', () => {
+    const w = worker('https://account.github.io', '/codex-cloud');
+    for (const url of ['/', '/other/index.html', '/codex-cloudish/watch', '/_next/static/app.js', '/codex-cloud/api/search']) {
+      expect(w.request(url, { mode: 'navigate' })).not.toHaveBeenCalled();
+    }
+  });
+
+  it('rejects a project install redirected to another project even when bytes match', async () => {
+    const w = worker('https://account.github.io', '/codex-cloud');
+    w.fetch.mockResolvedValue(resourceResponse(shell, 'https://account.github.io/other-project/index.html', true));
+    await expect(w.event('install')).rejects.toThrow('App resource is unavailable');
+    expect(w.cache.put).not.toHaveBeenCalled();
+  });
+
+  it('keeps other project and root app caches when activating a project worker', async () => {
+    const w = worker('https://account.github.io', '/codex-cloud');
+    w.caches.keys.mockResolvedValueOnce([
+      'libretv-standalone-shell-root-old',
+      'libretv-standalone-shell-%2Fother-old',
+      'libretv-standalone-shell-%2Fcodex-cloud-old-1',
+      'libretv-standalone-shell-%2Fcodex-cloud-old-2',
+      'libretv-standalone-shell-%2Fcodex-cloud-test-build',
+    ]);
+    await w.event('activate');
+    expect(w.caches.delete.mock.calls).toEqual([['libretv-standalone-shell-%2Fcodex-cloud-old-1']]);
   });
 });
 

@@ -18,6 +18,7 @@ import { Icon } from '@/components/icon';
 import { SiteFooter } from '@/components/site-footer';
 import { APP_BRAND } from '@/lib/app-brand';
 import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { appPath } from '@/lib/app-path';
 import { DirectMediaEntry } from '@/components/direct-media-entry';
 import { ContinueWatching } from '@/components/continue-watching';
 import { requestAppPanel } from '@/lib/app-navigation';
@@ -156,7 +157,14 @@ function HomeContent() {
       toast('请先在设置中添加并勾选点播源', 'warning');
       return;
     }
-    router.push(`/?s=${encodeURIComponent(query)}`, { scroll: false });
+    const href = `/?s=${encodeURIComponent(query)}`;
+    if (IS_STANDALONE) {
+      // Search data comes from external sources; native history keeps useSearchParams
+      // in sync without asking a static host for an unnecessary RSC navigation.
+      window.history.pushState(null, '', appPath(href));
+    } else {
+      router.push(href, { scroll: false });
+    }
     searchHistory.record(query);
   };
 

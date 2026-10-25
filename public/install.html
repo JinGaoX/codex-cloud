@@ -5,17 +5,17 @@
 <style>
 :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;background:#0b101a;color:#e6f2ff}*{box-sizing:border-box}body{margin:0;padding:max(28px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}main{max-width:500px;margin:auto}header{display:flex;align-items:center;gap:14px;margin:12px 0 28px}img{width:60px;height:60px;border-radius:16px}h1{font-size:23px;margin:0 0 6px}header p{margin:0;color:#8599b2;font-size:14px}h2{font-size:18px;margin:0 0 16px}section{padding:22px;border:1px solid #223045;background:#141c29;border-radius:22px;margin-bottom:18px}ol{padding-left:23px;margin:0 0 20px}li,p{font-size:15px;line-height:1.85}li{padding-bottom:9px}a{color:#33d6ff}.button{display:block;border-radius:14px;min-height:50px;padding:12px 16px;background:#00b8e6;color:#08131f;font-weight:600;text-decoration:none;text-align:center}.note{font-size:13px;color:#8599b2}.status{font-size:13px;color:#8599b2;margin:12px 0 0}details{font-size:14px;line-height:1.8}summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}footer{font-size:12px;color:#7a8ca6;text-align:center;margin-top:25px}
 </style></head><body><main>
-<header><img src="/icons/apple-touch-icon.png" alt=""><div><h1>LibreTV 随身版</h1><p>添加到主屏幕，像 App 一样打开</p></div></header>
+<header><img src="./icons/apple-touch-icon.png" alt=""><div><h1>LibreTV 随身版</h1><p>添加到主屏幕，像 App 一样打开</p></div></header>
 <section><h2>在 iPhone 上安装</h2><ol>
 <li>使用 <strong>Safari</strong> 打开本页。如果当前在 ChatGPT 内，请从菜单选择用 Safari 打开。</li>
 <li>点下面的<strong>打开 LibreTV</strong>，再点 Safari 的<strong>分享 → 添加到主屏幕</strong>。如果出现“作为网页 App 打开”，保持开启。</li>
 <li>回到手机主屏幕，从 LibreTV 图标打开，设置你自己的 <strong>6 位本机密码</strong>。</li>
 <li>首次从图标打开时保持联网，等“正在将应用保存到本机”提示消失，再测试关闭重开。</li>
-</ol><a class="button" href="/">打开 LibreTV</a><p class="status" id="install-status" role="status"></p>
+</ol><a class="button" href="./">打开 LibreTV</a><p class="status" id="install-status" role="status"></p>
 <p class="note">不需要 IPA、Mac、苹果开发者会员或每 7 天签名。普通 Safari 标签页仍会显示地址栏，请从主屏幕图标启动。</p></section>
 <section><h2>先试一下播放</h2><p>进入首页后可以点“Apple 官方试播”，检查声音、拖动、横屏和全屏，再在设置中添加自己可用的片源。</p><p class="note">程序、收藏和记录保存在当前设备。搜索及视频需要联网，片源需支持 HTTPS 与跨域访问。本应用不会下载影片。</p></section>
 <section><details><summary>安装和记录需要注意什么？</summary><p class="note">Safari 与主屏幕 App 的存储可能独立，请在常用的主屏幕入口设置密码、添加片源。iOS 可能因空间不足清理缓存或数据，请定期在设置中导出备份。缓存被清理或需要更新时，要重新访问安装来源。若安装来源设置了访问验证，首次下载时需要按该来源要求完成验证。</p></details></section>
-<footer><a href="https://support.apple.com/zh-cn/guide/iphone/iphea86e5236/ios">Apple 安装说明</a> · <a href="/source-code.tar.gz">本修改版源码</a><p>真实 iPhone 安装、全屏及后台恢复需在设备上确认。</p></footer>
+<footer><a href="https://support.apple.com/zh-cn/guide/iphone/iphea86e5236/ios">Apple 安装说明</a> · <a href="./source-code.tar.gz">本修改版源码</a><p>真实 iPhone 安装、全屏及后台恢复需在设备上确认。</p></footer>
 </main><script>
 (function(){var el=document.getElementById('install-status');el.textContent=window.isSecureContext?'当前为安全地址，可以继续安装。':'当前不是安全地址。Safari 完整安装需要 HTTPS，请确认安装网址。';})();
 </script></body></html>

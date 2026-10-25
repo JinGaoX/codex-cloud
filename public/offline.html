@@ -16,6 +16,10 @@
   <h1>暂时无法连接</h1>
   <p>请检查 Wi-Fi 或移动网络，联网后再打开应用。搜索和在线播放需要网络连接。</p>
   <p>本机保存的设置、收藏和观看记录不会因断网自动删除。请勿通过清除网站数据排查网络问题。</p>
-  <a href="/">重新连接</a>
-</main></body>
+  <a href="./" id="reconnect">重新连接</a>
+</main>
+<script>
+(function(){var worker=navigator.serviceWorker&&navigator.serviceWorker.controller;if(worker){document.getElementById('reconnect').href=new URL('./',worker.scriptURL).pathname;}})();
+</script>
+</body>
 </html>

@@ -16,6 +16,7 @@ public/source-code.tar.gz
 artifacts/
 standalone-out/
 native-dist/
+pages-dist/
 # Generated iOS web assets and signing/build state.
 ios/App/App/public/
 ios/App/App/capacitor.config.json

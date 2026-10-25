@@ -1,4 +1,5 @@
 import { IS_NATIVE } from './runtime-mode';
+import { appPath } from './app-path';
 
 export type LocalFileExportResult = 'download-started' | 'share-finished' | 'cancelled';
 
@@ -76,7 +77,7 @@ export async function exportTextFile(data: string, filename: string): Promise<Lo
 /** Share the public source archive bundled in the native app, without a host. */
 export async function exportNativeSourceArchive(): Promise<LocalFileExportResult> {
   await requireNativePlatform();
-  const response = await fetch('/source-code.tar.gz', { cache: 'no-store', credentials: 'omit', redirect: 'error' });
+  const response = await fetch(appPath('/source-code.tar.gz'), { cache: 'no-store', credentials: 'omit', redirect: 'error' });
   const maxBytes = 16 * 1024 * 1024;
   if (!response.ok || Number(response.headers.get('content-length')) > maxBytes) {
     throw new Error('无法读取本机源码归档');

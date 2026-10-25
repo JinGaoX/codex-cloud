@@ -15,6 +15,7 @@ import { formatTime } from '@/lib/utils';
 import { prefersTouchPointer } from '@/lib/touch-pointer';
 import { isAppleMobile, isFileMedia, selectMediaTransport } from '@/lib/media-transport';
 import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { appPath } from '@/lib/app-path';
 import { standaloneMediaUrl } from '@/lib/standalone-media';
 import {
   findActiveSegment,
@@ -1070,7 +1071,7 @@ export function PlayerShell({
         <div
           className="absolute inset-0 bg-black pointer-events-none"
           style={{
-            backgroundImage: 'url(/player-poster.png)',
+            backgroundImage: `url(${appPath('/player-poster.png')})`,
             backgroundSize: 'contain',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',

@@ -6,13 +6,21 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const native = process.argv.includes('--native');
+const pages = process.argv.includes('--pages');
+if (native && pages) throw new Error('--native and --pages are separate build targets.');
 const mode = native ? 'native' : 'standalone';
+const basePath = pages ? (process.env.NEXT_PUBLIC_APP_BASE_PATH || '/codex-cloud') : '';
+if (pages && (!/^\/(?:[A-Za-z0-9_~.-]+)(?:\/[A-Za-z0-9_~.-]+)*$/.test(basePath)
+  || basePath.split('/').some((part) => part === '.' || part === '..'))) {
+  throw new Error('Pages base path must be a root-relative path without trailing slash, query or traversal.');
+}
 // Keep staging outside the checkout so TypeScript cannot recursively include it.
-const stage = path.join(path.dirname(root), native ? '.libretv-native-stage' : '.libretv-standalone-stage');
-const output = path.join(root, native ? 'native-dist' : 'out');
+const stage = path.join(path.dirname(root), native ? '.libretv-native-stage' : pages ? '.libretv-pages-stage' : '.libretv-standalone-stage');
+const output = path.join(root, native ? 'native-dist' : pages ? 'pages-dist' : 'out');
 function run(args, cwd = root) {
   const result = spawnSync(process.execPath, args, {
-    cwd, stdio: 'inherit', env: { ...process.env, NEXT_PUBLIC_APP_MODE: mode, NEXT_TELEMETRY_DISABLED: '1' },
+    cwd, stdio: 'inherit', env: { ...process.env, NEXT_PUBLIC_APP_MODE: mode,
+      NEXT_PUBLIC_APP_BASE_PATH: basePath, NEXT_TELEMETRY_DISABLED: '1' },
   });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status || 1);
@@ -44,7 +52,13 @@ if (native) {
   }, null, 2) + '\n');
   console.log(`Native local app exported to ${output}; bundle these files with Capacitor. No IPA has been compiled or signed.`);
 } else {
-  writeFileSync(path.join(output, '_headers'), '/sw-standalone.js\n  Cache-Control: no-store\n  Service-Worker-Allowed: /\n/manifest.webmanifest\n  Cache-Control: no-cache\n/*\n  X-Content-Type-Options: nosniff\n');
-  run(['scripts/prepare-standalone-pwa.mjs', output]);
-  console.log(`Standalone iPhone PWA exported to ${output}; no Next API runtime is included.`);
+  if (pages) {
+    // Jekyll must not hide Next's _next assets on a branch-based Pages deployment.
+    writeFileSync(path.join(output, '.nojekyll'), '');
+    rmSync(path.join(output, '_headers'), { force: true });
+  } else {
+    writeFileSync(path.join(output, '_headers'), '/sw-standalone.js\n  Cache-Control: no-store\n  Service-Worker-Allowed: /\n/manifest.webmanifest\n  Cache-Control: no-cache\n/*\n  X-Content-Type-Options: nosniff\n');
+  }
+  run(['scripts/prepare-standalone-pwa.mjs', output, basePath]);
+  console.log(`Standalone iPhone PWA exported to ${output}${basePath ? ` at ${basePath}/` : ''}; no Next API runtime is included.`);
 }

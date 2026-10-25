@@ -1,8 +1,10 @@
 /* Generated for the static iPhone app. No API, proxy or media response is stored. */
 const BUILD = '__LIBRETV_STANDALONE_BUILD__';
+const BASE_PATH = /*__LIBRETV_APP_BASE_PATH__*/ '';
 const PRECACHE = /*__LIBRETV_STANDALONE_PRECACHE__*/ [];
 const ROUTES = /*__LIBRETV_STANDALONE_ROUTES__*/ {};
-const CACHE_PREFIX = 'libretv-standalone-shell-';
+// Project sites share an origin; activating one app must not evict another app's cache.
+const CACHE_PREFIX = 'libretv-standalone-shell-' + (BASE_PATH ? encodeURIComponent(BASE_PATH) + '-' : '');
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD}`;
 const FILES = new Set(PRECACHE.map((entry) => entry.url));
 
@@ -11,7 +13,8 @@ async function hasExpectedBytes(response, expected) {
   // Static hosts can canonicalize /index.html -> / and /watch.html -> /watch.
   // Follow that normalization, but never accept an off-site response or a login page.
   try {
-    if (new URL(response.url).origin !== self.location.origin) return false;
+    const target = new URL(response.url);
+    if (target.origin !== self.location.origin || scopedPath(target.pathname) === null) return false;
   } catch { return false; }
   const bytes = await response.clone().arrayBuffer();
   const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -62,6 +65,12 @@ function routeEntry(pathname) {
   return ROUTES[normalized];
 }
 
+function scopedPath(pathname) {
+  if (!BASE_PATH) return pathname;
+  if (pathname === BASE_PATH) return '/';
+  return pathname.startsWith(BASE_PATH + '/') ? pathname.slice(BASE_PATH.length) : null;
+}
+
 async function shellResponse(key, rsc) {
   const cache = await caches.open(CACHE_NAME);
   const response = await cache.match(key);
@@ -79,9 +88,10 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith('/api/') || request.headers.has('range')) return;
+  const pathname = scopedPath(url.pathname);
+  if (pathname === null || pathname.startsWith('/api/') || request.headers.has('range')) return;
 
-  const route = routeEntry(url.pathname);
+  const route = routeEntry(pathname);
   const rsc = request.headers.get('rsc') === '1';
   if (rsc && route?.rsc) {
     event.respondWith(shellResponse(route.rsc, true));
@@ -93,7 +103,7 @@ self.addEventListener('fetch', (event) => {
     if (page) event.respondWith(shellResponse(page, false));
     return;
   }
-  const previousBuildAsset = /^\/_next\/static\/.*\.(?:js|css|woff2?|ttf)$/.test(url.pathname);
+  const previousBuildAsset = /^\/_next\/static\/.*\.(?:js|css|woff2?|ttf)$/.test(pathname);
   if (!FILES.has(url.pathname) && !previousBuildAsset) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);

@@ -7,6 +7,7 @@ import { Spinner } from './states';
 import { prefersTouchPointer } from '@/lib/touch-pointer';
 import { ART_DEFAULT_CONTROL_HIDE_MS, TOUCH_CONTROL_HIDE_MS } from '@/lib/control-hide';
 import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { appPath } from '@/lib/app-path';
 
 /**
  * 直播播放器：与点播 player-shell 完全独立。
@@ -389,7 +390,7 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
         <div
           className="absolute inset-0 bg-black pointer-events-none"
           style={{
-            backgroundImage: 'url(/player-poster.png)',
+            backgroundImage: `url(${appPath('/player-poster.png')})`,
             backgroundSize: 'contain',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
