@@ -42,11 +42,12 @@ npm run build:iphone
 `out/` 为静态 PWA 程序文件。默认 `npm run build` 构建原全栈版，含服务端依赖，二者用途不同。
 日常使用已安装的 iPhone PWA 不要求 Windows 开机；安装、更新及缓存恢复仍需可用的 HTTPS 程序来源。
 
-当前「VIP影视」`personal.9` 已发布程序源码提交为 `1bdd8792de52f130e4244dd8ccccc6cd0f7e9188`；
+当前「VIP影视」`personal.10` 已发布程序源码提交为 `7217d78361d34180503cc6b8372712f4e648ccac`；
 其后的提交仅记录本轮验证结果。`gh-pages` 保存适配项目路径的静态文件，当前安装地址为
 https://jingaox.github.io/codex-cloud/ ，故障及验证见[托管恢复记录](pwa-hosting-recovery.zh-CN.md)。
 本轮另增 `fix/pwa-hosting-recovery` 分支；原有全部开发分支、标签和官方基线仍保留。
 `fix/pwa-source-detail` 保存用户实际 API 的详情失败修复，见[详情恢复记录](source-detail-recovery.zh-CN.md)。
 `feat/pwa-discovery-playback` 保存完整分辨率与首页真实榜单更新，见[更新验证](discovery-playback.zh-CN.md)。
 `feat/vip-family-cinema` 保存现代影院界面、原创品牌图标、免开屏密码和定时停止；见[家庭影院更新](vip-family-cinema.zh-CN.md)。
+`feat/vip-episode-titles` 保存原始分集标题及显示；见[剧集标题更新](episode-titles.zh-CN.md)。
 未来安卓可继续提取现有共享 Web 前端与 Capacitor 基础，本轮没有生成 Android APK。
