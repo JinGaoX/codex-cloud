@@ -27,4 +27,24 @@ Chromium模拟iPhone UA与触控、以现有GitHub来源匿名加载，6张均�
 这不代表iPhone Safari真机已验证；还需用户更新后检查自己的网络环境。
 
 `npm run typecheck` 通过，53个测试文件、755项自动检查全部通过。
-构建、故障回退测试和发布记录完成后补充。
+`npm run build:pages` 和 `npm run build:iphone` 均成功，仍为6条静态路由。
+
+Chromium触控模拟的5项浏览器场景全部通过：真实海报自然回退；原图与第一镜像故障后第二镜像真实解码；
+所有图片失败时片名、评分与找片搜索仍可用；网络恢复后在同页刷新成功；无未捕获错误、无新增后端或HTTP图片请求。
+共18个真实图片DOM实例成功解码。找片搜索故障场景使用明确标注的测试源，未假称已验证实际视频播放。
+
+## 发布
+
+程序源码提交：`930740e4f069d33956f327ae30b49a3fc97af0ab`。
+项目路径worker：`5beab2fea6e19c4c86cb`，64项公开程序缓存。
+根路径worker：`07f69cf89613f15b9b9d`，63项公开程序缓存。
+
+主地址：https://jingaox.github.io/codex-cloud/ 。
+GitHub Pages静态提交：`6d73ce822e66770b4d6c236e3aeda1972e5e54e3`，平台返回`built`；线上首页、manifest与worker的SHA-256均匹配本地准确发布文件。
+正式地址新浏览器会话另验证3张真实海报：540×807、540×675、540×770均完整解码，自动回退到首个备用图床，0个页面错误；仍为Chromium移动模拟，待iPhone真机确认。
+原Sites地址同步更新：https://libretv-pocket-15pm-c3d9.honestfairy18.chatgpt.site 。
+Sites版本11：`appgprj_6ada9b692918819181797977fa4e7c37~appgver_fa34302961c081918f1edaaa8ae44b72`。
+部署：`appgdep_6ade8f50e7b0819184d4e69d76a76ad8`，返回`succeeded`，保持原公开可见性。
+
+原App内通过设置 → 数据 → 应用更新 → 检查更新 → 更新并重新打开即可。
+已更新但先前图片仍占位时可点榜单右上的刷新按钮；不要清理网站数据排查，以免丢失记录。
