@@ -30,6 +30,19 @@
 2026-10-25 已验证六个公开榜单端点 HTTP 200 且包含 `Access-Control-Allow-Origin: *`；
 桌面 Chromium 从实际 GitHub Pages origin 直读六个端点均成功。
 类型检查、50个测试文件共708项单测已通过。
-构建和本地专项浏览器验证将在完成后补充。桌面 Chromium 的手机模拟不能替代 iPhone Safari 真机。
+`build:pages` 与 `build:iphone` 均通过；构建只剩既有本机密码图标 `<img>` 提示。
+本地专项浏览器7组通过：榜单筛选和原排名、四种屏幕尺寸和44px触控目标、点击推荐直搜、
+完整分辨率前缀读取与真实合成MP4解码回填、离线数据、推荐/尺寸读取失败隔离、无后台及根路径泄漏。
+其中前三组在 `2dfa653` 验证；后四组在最终 `5eb7a4e` 验证，并实际复现多条历史下拉、提交后收起且可直接点卡片。
+合成视频320×180，未用商业影片冒充通过。
+
+实际发布的程序提交为 `5eb7a4e3c68e3d315bb6ae841ba6f88f9c517410`，
+GitHub Pages 静态提交为 `4620ab2cbb61f69e189fa792b3adeb2abe365495`（built）。
+Pages worker 为 `620a884252e6d71b6f78`（67项资源），匿名首页、worker、manifest及对应源码归档与本地构建逐字节一致。
+备用 Sites 入口也已更新，version8，deployment `appgdep_6add955814748191b77731cb77d99df2`（succeeded）；其根路径worker为 `1a3ec16bae27ba667b48`（66项资源）。
+
+真实 GitHub Pages 保留同一浏览器环境完成 personal.7 → personal.8 更新2组通过：
+等待新worker后实际点击“更新并重新打开”、用原本机密码解锁；源配置、勾选、收藏、观看历史和7秒进度逐项一致。
+以上记录仅证明桌面 Chromium 及受控数据；不代表真实iPhone影片播放全部通过。桌面 Chromium 的手机模拟不能替代 iPhone Safari 真机。
 本轮按用户澄清不新增倍速功能，沿用原播放器已有实现。
 真机需检查预览尺寸、横屏全屏、后台恢复，以及源站视频的真实解码尺寸。

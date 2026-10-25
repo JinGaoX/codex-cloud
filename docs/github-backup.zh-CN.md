@@ -1,6 +1,6 @@
 # GitHub 备份与后续开发
 
-日期：2026-10-24。
+日期：2026-10-25。
 
 仓库：https://github.com/JinGaoX/codex-cloud
 
@@ -42,9 +42,10 @@ npm run build:iphone
 `out/` 为静态 PWA 程序文件。默认 `npm run build` 构建原全栈版，含服务端依赖，二者用途不同。
 日常使用已安装的 iPhone PWA 不要求 Windows 开机；安装、更新及缓存恢复仍需可用的 HTTPS 程序来源。
 
-当前 `personal.7` 已发布程序源码提交为 `1a897e41508c269c54c8dbdd34c0899e22e59e87`；
-其后的提交仅记录详情恢复结果。`gh-pages` 保存适配项目路径的静态文件，当前安装地址为
+当前 `personal.8` 已发布程序源码提交为 `5eb7a4e3c68e3d315bb6ae841ba6f88f9c517410`；
+其后的提交仅记录本轮验证结果。`gh-pages` 保存适配项目路径的静态文件，当前安装地址为
 https://jingaox.github.io/codex-cloud/ ，故障及验证见[托管恢复记录](pwa-hosting-recovery.zh-CN.md)。
 本轮另增 `fix/pwa-hosting-recovery` 分支；原有全部开发分支、标签和官方基线仍保留。
 `fix/pwa-source-detail` 保存用户实际 API 的详情失败修复，见[详情恢复记录](source-detail-recovery.zh-CN.md)。
+`feat/pwa-discovery-playback` 保存完整分辨率与首页真实榜单更新，见[更新验证](discovery-playback.zh-CN.md)。
 未来安卓可继续提取现有共享 Web 前端与 Capacitor 基础，本轮没有生成 Android APK。

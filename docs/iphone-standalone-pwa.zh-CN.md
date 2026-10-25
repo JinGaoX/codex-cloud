@@ -1,6 +1,6 @@
 # iPhone 15 Pro Max 独立版 PWA
 
-当前版本：`2.20.2-personal.7`，手机 App 布局。用户已同意公开 HTTPS 静态托管，当前安装入口：
+当前版本：`2.20.2-personal.8`，手机 App 布局。用户已同意公开 HTTPS 静态托管，当前安装入口：
 https://jingaox.github.io/codex-cloud/ 。无需 ChatGPT 登录，故障处理及准确来源见[托管恢复记录](pwa-hosting-recovery.zh-CN.md)。
 此前 `chatgpt.site` 入口保留，用户曾遇到平台 Cloudflare 拦截；旧数据仍属于旧域，不会自动搬到新域。
 `personal.7` 复用搜索中完整的真实剧集；详情失败可重试，冷启动可按已知片名严格匹配原 ID 恢复。
@@ -67,3 +67,6 @@ https://jingaox.github.io/codex-cloud/ 。无需 ChatGPT 登录，故障处理�
 
 PWA 并未给 iPhone 安装 Node.js。独立版通过迁移为浏览器代码实现免自建后台，
 因此不承诺服务器版可使用的所有影视 API 在纯浏览器模式也能使用。
+
+
+完整分辨率和首页影视榜单在 personal.8 加入，数据来源、验证与限制见[更新说明](discovery-playback.zh-CN.md)。原有倍速保持不变。
