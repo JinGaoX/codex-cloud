@@ -51,29 +51,53 @@ export function parseSearchList(
  * 部分源（如量子 lziapi、非凡 ffzy）第一条线路是网页中转页（…/share/xxx，不可播），
  * 真实 m3u8 在后面的线路里，因此优先取包含 m3u8 直链的线路；均无 m3u8 时回退第一条。
  */
-export function extractEpisodesFromPlayUrl(playUrl: string): string[] {
+interface ParsedEpisode {
+  url: string;
+  title: string;
+}
+
+/** Keep the source label and URL together until filtering and line selection are complete. */
+function extractEpisodeEntries(playUrl: string): ParsedEpisode[] {
   if (!playUrl) return [];
   const groups = playUrl
     .split('$$$')
-    .map((group) =>
-      group
-        .split('#')
-        .map((ep) => {
-          const parts = ep.split('$');
-          return parts.length > 1 ? parts[1] : '';
-        })
-        .filter((url) => url.startsWith('http://') || url.startsWith('https://'))
-    )
-    .filter((eps) => eps.length > 0);
+    .map((group) => group.split('#').flatMap((episode): ParsedEpisode[] => {
+      // The separator is the dollar immediately preceding the URL. Dollar signs in
+      // labels or signed URL queries are content, not a second episode separator.
+      const match = episode.match(/^([\s\S]*?)\$(https?:\/\/[\s\S]*)$/);
+      if (!match) return [];
+      return [{ title: match[1].trim(), url: match[2].trim() }];
+    }))
+    .filter((episodes) => episodes.length > 0);
   if (groups.length === 0) return [];
-  return groups.find((eps) => eps.some((url) => url.includes('.m3u8'))) ?? groups[0];
+  return groups.find((episodes) => episodes.some((episode) => episode.url.includes('.m3u8'))) ?? groups[0];
+}
+
+/** URL-only compatibility wrapper used by the existing probes and integrations. */
+export function extractEpisodesFromPlayUrl(playUrl: string): string[] {
+  return extractEpisodeEntries(playUrl).map((episode) => episode.url);
+}
+
+function titleBeforeMediaLink(text: string, index: number, previousEnd: number): string {
+  // Only a label in the same explicit $URL entry can be used. Do not borrow a
+  // page heading, neighbouring anchor, episode number or another line's title.
+  const prefix = text.slice(previousEnd, index);
+  return prefix.match(/(?:^|[#\r\n"'<>])([^#$\r\n"'<>]*)$/u)?.[1].trim() ?? '';
+}
+
+function extractM3u8EntriesFromText(text: string): ParsedEpisode[] {
+  let previousEnd = 0;
+  return [...text.matchAll(M3U8_PATTERN)].map((match) => {
+    const index = match.index ?? 0;
+    const title = titleBeforeMediaLink(text, index, previousEnd);
+    previousEnd = index + match[0].length;
+    return { url: match[0].substring(1), title };
+  });
 }
 
 /** 从简介文本中兜底提取 m3u8 链接 */
 export function extractM3u8FromText(text: string): string[] {
-  if (!text) return [];
-  const matches = text.match(M3U8_PATTERN) || [];
-  return matches.map((link) => link.replace(/^\$/, ''));
+  return extractM3u8EntriesFromText(text).map((episode) => episode.url);
 }
 
 /** 详情 JSON 响应 → 统一详情 */
@@ -86,12 +110,13 @@ export function parseDetail(
     throw new Error('获取到的详情内容无效');
   }
   const vod = d.list[0];
-  let episodes = extractEpisodesFromPlayUrl(String(vod.vod_play_url ?? ''));
-  if (episodes.length === 0) {
-    episodes = extractM3u8FromText(String(vod.vod_content ?? ''));
+  let entries = extractEpisodeEntries(String(vod.vod_play_url ?? ''));
+  if (entries.length === 0) {
+    entries = extractM3u8EntriesFromText(String(vod.vod_content ?? ''));
   }
   return {
-    episodes,
+    episodes: entries.map((episode) => episode.url),
+    episodeTitles: entries.map((episode) => episode.title),
     videoInfo: {
       title: str(vod.vod_name),
       cover: str(vod.vod_pic),
@@ -122,24 +147,25 @@ export function parseDetailPageHtml(
   html: string,
   source: { key: string; name: string; url: string }
 ): VideoDetail {
-  // 先尝试通用模式，再尝试非凡影视的日期哈希特征路径
-  let matches = html.match(/\$(https?:\/\/[^"'\s]+?\.m3u8)/g) || [];
-  if (matches.length === 0) {
-    matches = html.match(/\$(https?:\/\/[^"'\s]+?\/\d{8}\/\d+_[a-f0-9]+\/index\.m3u8)/g) || [];
+  // Deduplicate whole URL/title pairs, preserving the first actual label for a
+  // repeated media link. Never deduplicate by title: two episodes may share one.
+  const entries = extractM3u8EntriesFromText(html);
+  const byUrl = new Map<string, ParsedEpisode>();
+  for (const entry of entries) {
+    const parenIndex = entry.url.indexOf('(');
+    const url = parenIndex > 0 ? entry.url.substring(0, parenIndex) : entry.url;
+    const previous = byUrl.get(url);
+    if (!previous) byUrl.set(url, { ...entry, url });
+    else if (!previous.title && entry.title) byUrl.set(url, { ...entry, url });
   }
-  // 去重并清理尾缀
-  const episodes = [...new Set(matches)].map((link) => {
-    let u = link.substring(1);
-    const parenIndex = u.indexOf('(');
-    if (parenIndex > 0) u = u.substring(0, parenIndex);
-    return u;
-  });
+  const episodes = [...byUrl.values()];
 
   const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/);
   const descMatch = html.match(/<div[^>]*class=["']sketch["'][^>]*>([\s\S]*?)<\/div>/);
 
   return {
-    episodes,
+    episodes: episodes.map((episode) => episode.url),
+    episodeTitles: episodes.map((episode) => episode.title),
     videoInfo: {
       title: titleMatch ? titleMatch[1].trim() : undefined,
       desc: descMatch ? descMatch[1].replace(/<[^>]+>/g, ' ').trim() : undefined,

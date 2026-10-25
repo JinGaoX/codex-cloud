@@ -18,6 +18,7 @@ import { useFocusTrap } from './use-focus-trap';
 import { Icon } from './icon';
 import { probePreviewResolution } from '@/lib/preview-resolution';
 import { isQualityEntryFresh, qualityKey, resolutionLabel } from '@/lib/quality';
+import { describeEpisode, hasEpisodeTitles } from '@/lib/episode-labels';
 
 /**
  * 详情弹窗：剧集列表 + 排序 + 复制链接。
@@ -137,6 +138,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   if (!item) return null;
 
   const episodes = detail ? (reversed ? [...detail.episodes].reverse() : detail.episodes) : [];
+  const titledEpisodes = hasEpisodeTitles(detail?.episodeTitles, detail?.episodes.length ?? 0);
   const info = detail?.videoInfo;
   const storedQuality = store.qualityMap[qualityKey(item.sourceKey, item.vodId)];
   const cachedQuality = storedQuality && isQualityEntryFresh(storedQuality) ? storedQuality : undefined;
@@ -297,16 +299,18 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
                       复制链接
                     </button>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2 max-h-[40vh] overflow-y-auto scrollbar-thin pr-1">
+                  <div className={cn('grid gap-2 max-h-[40vh] overflow-y-auto scrollbar-thin pr-1', titledEpisodes ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3' : 'grid-cols-3 sm:grid-cols-5 md:grid-cols-7')}>
                     {episodes.map((_, i) => {
                       const realIndex = reversed ? detail.episodes.length - 1 - i : i;
+                      const episode = describeEpisode(realIndex, detail.episodeTitles?.[realIndex]);
                       return (
                         <button
                           key={realIndex}
-                          className="btn-ghost btn-sm !px-1 text-center"
+                          className={cn('btn-ghost min-h-11 min-w-0', titledEpisodes ? '!justify-start !px-3 py-3 text-left' : 'btn-sm !px-1 text-center')}
+                          aria-label={episode.label}
                           onClick={() => play(realIndex)}
                         >
-                          {realIndex + 1}
+                          {episode.title ? <><span aria-hidden="true" className="shrink-0 text-xs tabular-nums opacity-70">{episode.number}</span><span className="min-w-0 whitespace-normal break-words [overflow-wrap:anywhere] text-sm leading-6">{episode.title}</span></> : episode.number}
                         </button>
                       );
                     })}

@@ -110,6 +110,42 @@ describe('parseDetail', () => {
     expect(detail.episodes).toEqual(['https://cdn/fall.m3u8']);
   });
 
+  it('保留每集完整原标签，不以相同标题合并不同剧集，并为空标签保留位置', () => {
+    const detail = parseDetail({ list: [{ vod_play_url: [
+      '第01集 初遇与重逢$https://cdn/1.m3u8',
+      '番外篇$https://cdn/extra-a.m3u8',
+      '番外篇$https://cdn/extra-b.m3u8',
+      '$https://cdn/untitled.m3u8',
+      ' 第12集 归来 $https://cdn/12.m3u8',
+    ].join('#') }] }, source);
+    expect(detail.episodeTitles).toEqual(['第01集 初遇与重逢', '番外篇', '番外篇', '', '第12集 归来']);
+    expect(detail.episodes).toEqual(['https://cdn/1.m3u8', 'https://cdn/extra-a.m3u8', 'https://cdn/extra-b.m3u8', 'https://cdn/untitled.m3u8', 'https://cdn/12.m3u8']);
+  });
+
+  it('先过滤无效集再选实际m3u8线路，原标签与地址不串线', () => {
+    const detail = parseDetail({ list: [{ vod_play_url:
+      '网页一$https://cdn/share/a#网页二$https://cdn/share/b$$$无地址$#无效地址$ftp://cdn/x#第03集 真正的开场$https://cdn/3.m3u8#第04集 真正的续篇$https://cdn/4.m3u8',
+    }] }, source);
+    expect(detail.episodes).toEqual(['https://cdn/3.m3u8', 'https://cdn/4.m3u8']);
+    expect(detail.episodeTitles).toEqual(['第03集 真正的开场', '第04集 真正的续篇']);
+  });
+
+  it('原标签或签名查询里的美元符号不截断播放地址', () => {
+    const detail = parseDetail({ list: [{ vod_play_url:
+      '第1集 $100的约定$https://cdn/1.m3u8?signature=abc$def&x=1',
+    }] }, source);
+    expect(detail.episodes).toEqual(['https://cdn/1.m3u8?signature=abc$def&x=1']);
+    expect(detail.episodeTitles).toEqual(['第1集 $100的约定']);
+  });
+
+  it('简介回退保留明确同条目标签，未提供标题不从页面或URL猜测', () => {
+    const detail = parseDetail({ list: [{ vod_name: '整部片名', vod_content:
+      '第1集 起点$https://cdn/first.m3u8#第2集 归途$https://cdn/second.m3u8#$https://cdn/episode-3-finale.m3u8',
+    }] }, source);
+    expect(detail.episodeTitles).toEqual(['第1集 起点', '第2集 归途', '']);
+    expect(detail.episodeTitles).toHaveLength(detail.episodes.length);
+  });
+
   it('空列表抛错', () => {
     expect(() => parseDetail({ list: [] }, source)).toThrow();
   });
@@ -126,6 +162,18 @@ describe('parseDetailPageHtml', () => {
     expect(detail.episodes).toEqual(['https://cdn/ep1.m3u8', 'https://cdn/ep2.m3u8']);
     expect(detail.videoInfo.title).toBe('庆余年');
     expect(detail.videoInfo.desc).toBe('简介 内容');
+  });
+
+  it('HTML回退去重保持标题与URL配对，缺失标签不用页面标题代替', () => {
+    const html = `<h1>整部影片标题</h1>
+      <script>one={"url":"$https://cdn/1.m3u8"}</script>
+      <script>named={"url":"第01集 起点$https://cdn/1.m3u8"}</script>
+      <script>two={"url":"第02集 归途$https://cdn/2.m3u8"}</script>
+      <script>dup={"url":"第02集 不使用重复集的另一标题$https://cdn/2.m3u8"}</script>
+      <script>three={"url":"$https://cdn/episode-three.m3u8"}</script>`;
+    const detail = parseDetailPageHtml(html, source);
+    expect(detail.episodes).toEqual(['https://cdn/1.m3u8', 'https://cdn/2.m3u8', 'https://cdn/episode-three.m3u8']);
+    expect(detail.episodeTitles).toEqual(['第01集 起点', '第02集 归途', '']);
   });
 
   it('非凡影视特征路径兜底', () => {

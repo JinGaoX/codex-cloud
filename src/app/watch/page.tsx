@@ -43,6 +43,7 @@ import { IS_STANDALONE } from '@/lib/runtime-mode';
 import { DIRECT_MEDIA_SOURCE } from '@/lib/standalone-media';
 import { getSleepTimer } from '@/lib/sleep-timer';
 import { SleepTimerControl, useSleepTimer } from '@/components/sleep-timer-control';
+import { describeEpisode, hasEpisodeTitles, type EpisodeLabel } from '@/lib/episode-labels';
 
 /**
  * 播放页（唯一入口，替代旧版 watch.html → player.html 跳转链）。
@@ -158,6 +159,10 @@ function WatchContent() {
     if (episodes.length > 0) return Math.min(Math.max(indexParam, 0), episodes.length - 1);
     return indexParam;
   }, [episodes, indexParam]);
+
+  const currentEpisode = describeEpisode(currentIndex, detailQuery.data?.episodeTitles?.[currentIndex]);
+  const titledEpisodes = hasEpisodeTitles(detailQuery.data?.episodeTitles, episodes.length);
+  const playerTitle = episodes.length > 0 ? `${videoTitle} · ${currentEpisode.label}` : videoTitle;
 
   // 跳过片段按剧名记忆：换集不变，换源到同名资源也能命中。
   // 标题缺失（直连链接）时退回 source:vodId，至少保证本源本片可用。
@@ -362,7 +367,7 @@ function WatchContent() {
               {currentUrl ? (
                 <PlayerShell
                   url={currentUrl}
-                  title={videoTitle}
+                  title={playerTitle}
                   adFilter={store.adFilter}
                   autoplayNext={!isDirectMedia && store.autoplayNext && sleepTimer.mode !== 'episode' && sleepTimer.mode !== 'stopped'}
                   canPlay={checkTimerCanPlay}
@@ -408,6 +413,7 @@ function WatchContent() {
               )}
             </div>
 
+            {episodes.length > 0 && <p aria-label="当前剧集" className="mt-3 text-sm leading-6 text-content whitespace-normal break-words [overflow-wrap:anywhere]">正在播放 · {currentEpisode.label}</p>}
             <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
               <p className="text-sm text-faint" aria-live="polite">
                 {actualResolution ? `当前分辨率 ${actualResolution}` : '分辨率将在视频加载后显示'}
@@ -508,11 +514,12 @@ function WatchContent() {
                 <EmptyState variant="plain" title={detailQuery.isError ? '获取剧集失败' : '暂无剧集信息'} />
               )
             ) : (
-              <div className="grid grid-cols-5 lg:grid-cols-4 gap-1.5 max-h-[65vh] overflow-y-auto scrollbar-thin pr-1">
+              <div className={cn('grid gap-1.5 max-h-[65vh] overflow-y-auto scrollbar-thin pr-1', titledEpisodes ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-1' : 'grid-cols-5 lg:grid-cols-4')}>
                 {orderedEpisodes.map((realIndex) => (
                   <EpisodeButton
                     key={realIndex}
-                    index={realIndex}
+                    episode={describeEpisode(realIndex, detailQuery.data?.episodeTitles?.[realIndex])}
+                    titled={titledEpisodes}
                     active={realIndex === currentIndex}
                     onClick={() => goEpisode(realIndex)}
                   />
@@ -541,7 +548,7 @@ function WatchContent() {
 }
 
 /** 集数按钮：激活时自动滚动进可视区（长剧列表） */
-function EpisodeButton({ index, active, onClick }: { index: number; active: boolean; onClick: () => void }) {
+function EpisodeButton({ episode, titled, active, onClick }: { episode: EpisodeLabel; titled: boolean; active: boolean; onClick: () => void }) {
   const ref = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -551,10 +558,12 @@ function EpisodeButton({ index, active, onClick }: { index: number; active: bool
   return (
     <button
       ref={ref}
-      className={cn('btn btn-sm !px-1', active ? 'episode-active' : 'btn-ghost')}
+      className={cn('btn min-h-11 min-w-0', titled ? '!justify-start !px-3 py-3 text-left' : 'btn-sm !px-1', active ? 'episode-active' : 'btn-ghost')}
+      aria-label={episode.label}
+      aria-current={active ? 'true' : undefined}
       onClick={onClick}
     >
-      {index + 1}
+      {episode.title ? <><span aria-hidden="true" className="shrink-0 text-xs tabular-nums opacity-70">{episode.number}</span><span className="min-w-0 whitespace-normal break-words [overflow-wrap:anywhere] text-sm leading-6">{episode.title}</span></> : episode.number}
     </button>
   );
 }

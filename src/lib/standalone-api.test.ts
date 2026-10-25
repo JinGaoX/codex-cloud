@@ -135,6 +135,38 @@ describe('独立 PWA 的直连网络边界', () => {
     expect(new URL(String(vi.mocked(fetch).mock.calls[0][0])).searchParams.get('ids')).toBe('1');
   });
 
+  it('HTTPS过滤剔除任意位置的HTTP集后，原剧集标题仍与地址同索引', async () => {
+    vi.mocked(fetch).mockResolvedValue(response({ list: [{ ...vod(), vod_play_url: [
+      '应删除的开头$http://media.example.org/0.mp4',
+      '第01集 初遇$https://media.example.org/1.mp4',
+      '应删除的中间$http://media.example.org/2.mp4',
+      '第03集 归途$https://media.example.org/3.mp4',
+      '$https://media.example.org/4.mp4',
+      '应删除的结尾$http://media.example.org/5.mp4',
+    ].join('#') }] }));
+    const detail = await standaloneApi.detail('1', good);
+    expect(detail.episodes).toEqual(['https://media.example.org/1.mp4', 'https://media.example.org/3.mp4', 'https://media.example.org/4.mp4']);
+    expect(detail.episodeTitles).toEqual(['第01集 初遇', '第03集 归途', '']);
+  });
+
+  it('搜索暖缓存和冷启动同ID恢复均保留实际标题，缓存返回标题数组独立克隆', async () => {
+    const complete = { ...vod(), vod_id: '1', vod_play_url: '第01集 约定$https://media.example.org/1.mp4#第02集 归来$https://media.example.org/2.mp4' };
+    vi.mocked(fetch).mockResolvedValue(response({ list: [complete] }));
+    await standaloneApi.search('测试影片', [good], false);
+    const cached = await standaloneApi.detail('1', good);
+    expect(cached.episodeTitles).toEqual(['第01集 约定', '第02集 归来']);
+    cached.episodeTitles![0] = '调用方改写';
+    expect((await standaloneApi.detail('1', good)).episodeTitles).toEqual(['第01集 约定', '第02集 归来']);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    clearStandaloneDetailCache();
+    vi.mocked(fetch).mockImplementation(async (raw) => {
+      if (new URL(String(raw)).searchParams.has('ids')) throw new TypeError('Failed to fetch');
+      return response({ list: [complete] });
+    });
+    expect((await standaloneApi.detail('1', good, undefined, '测试影片')).episodeTitles).toEqual(['第01集 约定', '第02集 归来']);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+
   it('搜索已返回真实 HTTPS 剧集时，打开详情不重复请求接口', async () => {
     vi.mocked(fetch).mockResolvedValue(response({ list: [{
       ...vod(), vod_id: '1', vod_play_url: '第一集$https://media.example.org/1.m3u8#第二集$https://media.example.org/2.mp4',

@@ -42,6 +42,8 @@ export interface VideoInfo {
 
 export interface VideoDetail {
   episodes: string[];
+  /** Source-provided episode labels, aligned with episodes. Empty string means unavailable; never inferred from a URL. */
+  episodeTitles?: string[];
   videoInfo: VideoInfo;
 }
 

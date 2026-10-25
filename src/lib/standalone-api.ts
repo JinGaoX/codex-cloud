@@ -33,7 +33,11 @@ function detailCacheKey(id: string, source: SourceConfig): string {
 }
 
 function cloneDetail(detail: VideoDetail): VideoDetail {
-  return { episodes: [...detail.episodes], videoInfo: { ...detail.videoInfo } };
+  return {
+    episodes: [...detail.episodes],
+    ...(detail.episodeTitles ? { episodeTitles: [...detail.episodeTitles] } : {}),
+    videoInfo: { ...detail.videoInfo },
+  };
 }
 
 function removeCachedDetail(key: string): void {
@@ -193,7 +197,12 @@ function cmsUrl(raw: string, values: Record<string, string>): URL {
 function playableDetail(data: unknown, source: SourceConfig): VideoDetail {
   const result = parseDetail(data, source);
   const originalCount = result.episodes.length;
-  result.episodes = result.episodes.filter((url) => { try { standaloneUrl(url); return true; } catch { return false; } });
+  const retained = result.episodes.flatMap((url, index) => {
+    try { standaloneUrl(url); return [{ url, title: result.episodeTitles?.[index] ?? '' }]; }
+    catch { return []; }
+  });
+  result.episodes = retained.map((episode) => episode.url);
+  result.episodeTitles = retained.map((episode) => episode.title);
   if (result.episodes.length === 0) {
     throw new Error(originalCount > 0
       ? '该源仅提供 HTTP 或无效播放地址，iPhone 独立版需要 HTTPS MP4/HLS，请切换其他源'
