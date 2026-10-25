@@ -158,6 +158,8 @@ function HomeContent() {
       toast('请先在设置中添加并勾选点播源', 'warning');
       return;
     }
+    searchHistory.close();
+    inputRef.current?.blur();
     const href = `/?s=${encodeURIComponent(query)}`;
     if (IS_STANDALONE) {
       // Search data comes from external sources; native history keeps useSearchParams
