@@ -72,6 +72,8 @@ export interface SourceSearchOutcome {
  * `from` 区分来源：play 是播放器实测的真实分辨率（权威），probe 是解析 m3u8 推断值。
  */
 export interface QualityEntry {
+  /** Exact width when supplied by a playlist, media header or decoded video. Never inferred. */
+  width?: number;
   height?: number;
   from: 'play' | 'probe';
   /**

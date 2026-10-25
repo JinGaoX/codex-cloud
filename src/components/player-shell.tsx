@@ -93,7 +93,7 @@ interface PlayerShellProps {
    * 单码率 m3u8 / 直链的分辨率只能等解码后才知道，播放一次后回写缓存，
    * 下次搜索同一部剧就能直接显示画质，不必再探测。
    */
-  onQuality?: (height: number) => void;
+  onQuality?: (height: number, width?: number) => void;
   /** 恢复策略判源不可用（重试耗尽/格式硬失败）时回调：父级弹出换源面板 */
   onRequestSwitchSource?: (reason: string) => void;
   /** 控制条上的上一集 / 下一集：不在播放器里也能切集，省得回到页面按钮 */
@@ -156,8 +156,10 @@ export function PlayerShell({
   };
 
   /** 上报实测画质：多次上报取大值由调用方决定，这里只管把拿到的高度传出去 */
-  const reportQuality = (height: number) => {
-    if (height > 0) propsRef.current.onQuality?.(height);
+  const reportQuality = (height: number, width?: number) => {
+    // A previous source can emit metadata between the next render and loadEpisode's effect.
+    if (loadedEpisodeIdentityRef.current !== (propsRef.current.episodeKey ?? propsRef.current.url)) return;
+    if (height > 0) propsRef.current.onQuality?.(height, width && width > 0 ? width : undefined);
   };
 
   // 跨集共享、每次换集重置的播放链路状态
@@ -453,22 +455,11 @@ export function PlayerShell({
 
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       recoveryRef.current?.markHealthy();
-      // master playlist 的档位高度：多码率源在这里就能拿到上限
-      const heights = hls.levels
-        .map((level) => level.height)
-        .filter((h): h is number => typeof h === 'number' && h > 0);
-      if (heights.length > 0) reportQuality(Math.max(...heights));
       // 进度恢复改由 restoreAndStart 处理：duration 未就绪时不消费标记，挂事件重试
       void restoreAndStart();
     });
     // 播放链路恢复（FRAG_LOADED / MANIFEST_PARSED）：静默窗外清零连续失败计数
     hls.on(Hls.Events.FRAG_LOADED, () => recoveryRef.current?.markHealthy());
-    // 单码率源在 MANIFEST 阶段拿不到 height（清单尚未解析），这里补一次。
-    // 注意 data.level 是档位下标，分辨率在 levelInfo 上
-    hls.on(Hls.Events.LEVEL_LOADED, (_evt, data) => {
-      const height = data.levelInfo?.height;
-      if (typeof height === 'number') reportQuality(height);
-    });
     // 分片真正进入 MSE buffer 才算媒体恢复：此时视频轨可渲染，错误态可解除
     hls.on(Hls.Events.FRAG_BUFFERED, () => {
       mediaHealthyRef.current = true;
@@ -680,7 +671,8 @@ export function PlayerShell({
      */
     const reportVideoHeight = () => {
       const height = art.video?.videoHeight;
-      if (typeof height === 'number' && height > 0) reportQuality(height);
+      const width = art.video?.videoWidth;
+      if (typeof height === 'number' && height > 0) reportQuality(height, width);
     };
     art.on('video:loadedmetadata', reportVideoHeight);
     art.on('video:canplay', reportVideoHeight);

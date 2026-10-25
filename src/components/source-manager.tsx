@@ -59,7 +59,7 @@ const SECONDARY_TABS: Record<PrimaryTab, { id: SecondaryTab; label: string }[]> 
     { id: 'live', label: '直播源' },
     { id: 'subs', label: '数据源订阅' },
   ],
-  prefs: IS_STANDALONE ? [{ id: 'playback', label: '播放' }] : [
+  prefs: IS_STANDALONE ? [{ id: 'playback', label: '播放' }, { id: 'home', label: '首页与内容' }] : [
     { id: 'playback', label: '播放与过滤' },
     { id: 'image', label: '封面图加载' },
     { id: 'home', label: '首页与内容' },
@@ -753,11 +753,11 @@ function HomePanel() {
         />
         <ToggleRow
           label="首页推荐"
-          description="在首页展示推荐内容"
-          checked={store.doubanEnabled}
-          onChange={(v) => store.updateSettings({ doubanEnabled: v })}
+          description={IS_STANDALONE ? '展示电影、剧集周榜和热播榜，可筛选高分与喜剧' : '在首页展示推荐内容'}
+          checked={IS_STANDALONE ? store.standaloneDiscoveryEnabled : store.doubanEnabled}
+          onChange={(v) => store.updateSettings(IS_STANDALONE ? { standaloneDiscoveryEnabled: v } : { doubanEnabled: v })}
         />
-        <SelectRow
+        {!IS_STANDALONE && <SelectRow
           label="推荐数据源"
           value={store.recommendSource}
           onChange={(v) => store.updateSettings({ recommendSource: v as 'douban' | 'bangumi' | 'hot-list' })}
@@ -766,7 +766,8 @@ function HomePanel() {
             { value: 'bangumi', label: 'Bangumi', hint: '每日新番放送（免 key）' },
             { value: 'hot-list', label: '影视榜单', hint: '豆瓣周榜 / 百度热播' },
           ]}
-        />
+        />}
+        {IS_STANDALONE && <p className="text-xs text-muted leading-5">榜单由 60s API 提供，来源为豆瓣与百度。不向榜单服务发送你的片源配置和搜索词。</p>}
       </div>
     </section>
   );

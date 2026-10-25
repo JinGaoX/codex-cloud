@@ -95,6 +95,13 @@ export function qualityLabel(height?: number): string | undefined {
   return best ? best[1] : `${height}P`;
 }
 
+/** Full dimensions only when both values were actually read; never assume a 16:9 ratio. */
+export function resolutionLabel(width?: number, height?: number): string | undefined {
+  return Number.isInteger(width) && Number.isInteger(height) && (width ?? 0) > 0 && (height ?? 0) > 0
+    ? `${width}×${height}`
+    : undefined;
+}
+
 /** 缓存条目上限（按「源 + 影片」计）：每部剧 × 每个源一条，需防无上限膨胀 */
 export const QUALITY_MAX_ENTRIES = 400;
 
@@ -122,8 +129,10 @@ export function mergeQualityEntries(
     const prev = next[key];
     if (prev?.from === 'play') {
       if (value.from !== 'play') continue;
-      const best = Math.max(prev.height ?? 0, value.height ?? 0);
-      next[key] = { from: 'play', height: best || undefined, timestamp: now };
+      // Preserve width and height as a pair: mixing a newer width with an older height fabricates a resolution.
+      const keepPrevious = (prev.height ?? 0) > (value.height ?? 0)
+        || ((prev.height ?? 0) === (value.height ?? 0) && !!prev.width && !value.width);
+      next[key] = { ...(keepPrevious ? prev : value), timestamp: now };
       continue;
     }
     if (prev?.from === 'probe' && value.from === 'probe' && prev.height !== undefined && value.height === undefined) {
@@ -171,15 +180,16 @@ export function describeQualityBadge(
 ): QualityBadgeView | undefined {
   if (loading) return { kind: 'loading', title: '正在探测画质…', retryable: false };
   if (!entry) return undefined;
-  const label = qualityLabel(entry.height);
+  const dimensions = resolutionLabel(entry.width, entry.height);
+  const label = dimensions ?? qualityLabel(entry.height);
   if (label) {
     return {
       kind: 'value',
       label,
       title:
         entry.from === 'play'
-          ? `播放实测的真实分辨率（${entry.height}P）`
-          : `解析播放列表得到的档位（${entry.height}P）`,
+          ? `播放实测的真实分辨率（${dimensions ?? `${entry.height}P`}）`
+          : `播放列表或媒体头记录的分辨率（${dimensions ?? `${entry.height}P`}）`,
       retryable: false,
     };
   }

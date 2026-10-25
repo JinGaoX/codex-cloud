@@ -9,6 +9,7 @@ import {
   isRetryableTimeout,
   mergeQualityEntries,
   qualityLabel,
+  resolutionLabel,
   summarizeQuality,
 } from './quality';
 import { parseBestHeight, parseMediaPlaylist } from './quality-probe';
@@ -361,5 +362,33 @@ describe('isRetryableTimeout', () => {
     expect(isRetryableTimeout('画质探测超时')).toBe(true);
     expect(isRetryableTimeout('HTTP 403')).toBe(false);
     expect(isRetryableTimeout(undefined)).toBe(false);
+  });
+});
+
+
+describe('exact resolution data', () => {
+  const timestamp = 1700000000000;
+  it('shows exact full dimensions without guessing a width for legacy height-only entries', () => {
+    expect(resolutionLabel(1920, 1080)).toBe('1920×1080');
+    expect(resolutionLabel(720, 1280)).toBe('720×1280');
+    expect(resolutionLabel(undefined, 1080)).toBeUndefined();
+    expect(resolutionLabel(0, 1080)).toBeUndefined();
+    expect(resolutionLabel(1920.5, 1080)).toBeUndefined();
+    expect(describeQualityBadge({ width: 1920, height: 1080, from: 'play', timestamp })?.label).toBe('1920×1080');
+    expect(describeQualityBadge({ height: 1080, from: 'play', timestamp })?.label).toBe('1080P');
+  });
+  it('keeps width-height pairs together when a later ABR level has lower dimensions', () => {
+    const previous: QualityEntry = { width: 1920, height: 1080, from: 'play', timestamp };
+    const lower: QualityEntry = { width: 1280, height: 720, from: 'play', timestamp };
+    const best = mergeQualityEntries({ a: previous }, { a: lower }, timestamp + 1).a;
+    expect(best).toMatchObject({ width: 1920, height: 1080 });
+    const higher: QualityEntry = { width: 2560, height: 1440, from: 'play', timestamp };
+    expect(mergeQualityEntries({ a: previous }, { a: higher }, timestamp + 1).a).toMatchObject({ width: 2560, height: 1440 });
+  });
+  it('upgrades legacy measured entries only when the exact dimensions are actually read', () => {
+    const previous: QualityEntry = { height: 1080, from: 'play', timestamp };
+    const measured: QualityEntry = { width: 1920, height: 1080, from: 'play', timestamp };
+    expect(mergeQualityEntries({ a: previous }, { a: measured }, timestamp + 1).a.width).toBe(1920);
+    expect(mergeQualityEntries({ a: measured }, { a: previous }, timestamp + 1).a.width).toBe(1920);
   });
 });

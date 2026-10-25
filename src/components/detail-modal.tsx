@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client-api';
-import type { SearchResultItem, VideoDetail } from '@/lib/types';
+import type { QualityEntry, SearchResultItem, VideoDetail } from '@/lib/types';
 import { buildWatchUrl } from '@/lib/utils';
 import { formatRemarks } from '@/lib/remarks';
 import { SmartImage } from './smart-image';
-import { useAppStore, resolveSource } from '@/lib/store';
+import { useAppStore, resolveSource, readQuality } from '@/lib/store';
 import { useToast } from './toast';
 import { cn } from '@/lib/utils';
 import { addSearchHistory, addFavorite, removeFavorite, favoriteKeyOf, db } from '@/lib/db';
@@ -16,6 +16,8 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { EmptyState, ErrorState, LoadingState } from './states';
 import { useFocusTrap } from './use-focus-trap';
 import { Icon } from './icon';
+import { probePreviewResolution } from '@/lib/preview-resolution';
+import { isQualityEntryFresh, qualityKey, resolutionLabel } from '@/lib/quality';
 
 /**
  * 详情弹窗：剧集列表 + 排序 + 复制链接。
@@ -31,7 +33,10 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   const [error, setError] = useState('');
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [reversed, setReversed] = useState(false);
+  const [previewQuality, setPreviewQuality] = useState<QualityEntry>();
+  const [resolutionLoading, setResolutionLoading] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
+  const detailIdentityRef = useRef('');
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const favorite = useLiveQuery(
@@ -55,6 +60,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   }, [item]);
 
   useEffect(() => {
+    detailIdentityRef.current = '';
     if (!item) {
       setDetail(null);
       setError('');
@@ -80,7 +86,12 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
     abortRef.current = controller;
     api
       .detail(item.vodId, source, controller.signal, item.name)
-      .then((d) => { if (!controller.signal.aborted) setDetail(d); })
+      .then((d) => {
+        if (!controller.signal.aborted) {
+          detailIdentityRef.current = `${item.sourceKey}:${item.vodId}`;
+          setDetail(d);
+        }
+      })
       .catch((err) => {
         if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) return;
         setError(err instanceof Error ? err.message : '获取详情失败');
@@ -89,6 +100,29 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item, retryAttempt]);
+
+  // Only the opened detail's first episode is inspected. This is independent of the detail request:
+  // CORS/unsupported media headers must never block the episode buttons or start playback.
+  useEffect(() => {
+    setPreviewQuality(undefined);
+    setResolutionLoading(false);
+    const firstEpisode = detail?.episodes[0];
+    if (!item || !firstEpisode || detailIdentityRef.current !== `${item.sourceKey}:${item.vodId}`) return;
+    const cached = readQuality(item.sourceKey, item.vodId);
+    if (resolutionLabel(cached?.width, cached?.height)) return;
+    const controller = new AbortController();
+    setResolutionLoading(true);
+    void probePreviewResolution(firstEpisode, controller.signal)
+      .then((size) => {
+        if (controller.signal.aborted || !size) return;
+        const entry: QualityEntry = { ...size, from: 'probe', timestamp: Date.now() };
+        setPreviewQuality(entry);
+        useAppStore.getState().setQuality({ [qualityKey(item.sourceKey, item.vodId)]: entry });
+      })
+      .catch(() => {})
+      .finally(() => { if (!controller.signal.aborted) setResolutionLoading(false); });
+    return () => controller.abort();
+  }, [item?.sourceKey, item?.vodId, detail?.episodes[0]]);
 
   useEffect(() => {
     if (!item) return;
@@ -103,6 +137,10 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
 
   const episodes = detail ? (reversed ? [...detail.episodes].reverse() : detail.episodes) : [];
   const info = detail?.videoInfo;
+  const storedQuality = store.qualityMap[qualityKey(item.sourceKey, item.vodId)];
+  const cachedQuality = storedQuality && isQualityEntryFresh(storedQuality) ? storedQuality : undefined;
+  const resolutionEntry = resolutionLabel(cachedQuality?.width, cachedQuality?.height) ? cachedQuality : previewQuality;
+  const resolution = resolutionLabel(resolutionEntry?.width, resolutionEntry?.height);
 
   const play = (index: number) => {
     if (!detail || !detail.episodes[index]) return;
@@ -208,6 +246,18 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
                   />
                 )}
                 <div className="min-w-0 space-y-3">
+                  <div className="rounded-lg border border-line bg-chip/40 px-3 py-2 text-sm" aria-live="polite">
+                    <p className="text-content">
+                      {resolution
+                        ? `${resolutionEntry?.from === 'play' ? '已播放分辨率' : '媒体信息分辨率'} ${resolution}`
+                        : resolutionLoading ? '正在读取分辨率…' : '分辨率暂未读取到'}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-faint">
+                      {resolution
+                        ? '仅供选片参考；媒体清单可能标注最高档位，不同剧集或档位可能不同，播放页显示当前实际尺寸。'
+                        : '可以直接选集播放，视频加载后会自动显示完整尺寸。'}
+                    </p>
+                  </div>
                   {metaRows.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                       {metaRows.map(([k, v]) => (

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/header';
 import { RecommendSection } from '@/components/douban-section';
+import { DiscoverySection } from '@/components/discovery-section';
 import { DetailModal } from '@/components/detail-modal';
 import { AggregatedCard, aggregateResults } from '@/components/video-card';
 import { useAppStore, resolveSource, isInDisabledSubscription, isSourceDisabled } from '@/lib/store';
@@ -433,6 +434,7 @@ function HomeContent() {
           <>
             <ContinueWatching />
             {selectedSources.length === 0 && <NoSourceGuide hasSources={customAPIs.length > 0 || envSources.length > 0} />}
+            <DiscoverySection onPick={(title) => { setInput(title); runSearch(title); }} />
             <DirectMediaEntry />
           </>
         )}

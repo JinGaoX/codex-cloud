@@ -26,7 +26,7 @@ import { enqueueDownload } from '@/components/download-manager';
 import { Icon } from '@/components/icon';
 import { useAuth } from '@/components/auth';
 import { resolveSource, useAppStore } from '@/lib/store';
-import { qualityKey } from '@/lib/quality';
+import { qualityKey, resolutionLabel } from '@/lib/quality';
 import {
   clearProgress,
   progressKeyOf,
@@ -68,6 +68,7 @@ function WatchContent() {
   const titleParam = searchParams.get('title') || '';
   const indexParam = parseInt(searchParams.get('index') || '0', 10) || 0;
 
+  const [actualResolution, setActualResolution] = useState<string>();
   const [reversed, setReversed] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
   const [skipPanelOpen, setSkipPanelOpen] = useState(false);
@@ -104,6 +105,8 @@ function WatchContent() {
       window.visualViewport?.removeEventListener('resize', measure);
     };
   }, [skipPanelOpen]);
+
+  useEffect(() => setActualResolution(undefined), [sourceKey, vodId, indexParam, directUrl]);
 
   const isDirectMedia = sourceKey === DIRECT_MEDIA_SOURCE && Boolean(directUrl);
   const source = isDirectMedia ? { key: DIRECT_MEDIA_SOURCE, name: '视频链接', url: '' } : resolveSource(store, sourceKey, {
@@ -358,11 +361,12 @@ function WatchContent() {
                   hasNextEpisode={episodes.length > 0 && currentIndex < episodes.length - 1}
                   onPrevEpisode={() => goEpisode(currentIndex - 1)}
                   onNextEpisode={() => goEpisode(currentIndex + 1)}
-                  onQuality={(height) => {
+                  onQuality={(height, width) => {
+                    setActualResolution(resolutionLabel(width, height));
                     // 播放实测是最权威的画质来源，回写后搜索列表里该「源 + 影片」直接显示
                     if (!sourceKey || !vodId) return;
                     useAppStore.getState().setQuality({
-                      [qualityKey(sourceKey, vodId)]: { height, from: 'play', timestamp: Date.now() },
+                      [qualityKey(sourceKey, vodId)]: { height, width, from: 'play', timestamp: Date.now() },
                     });
                   }}
                 />
@@ -378,6 +382,10 @@ function WatchContent() {
                 </div>
               )}
             </div>
+
+            <p className="mt-3 text-sm text-faint" aria-live="polite">
+              {actualResolution ? `当前分辨率 ${actualResolution}` : '分辨率将在视频加载后显示'}
+            </p>
 
             {/* 操作栏 */}
             {!isDirectMedia && <div className="flex flex-wrap items-center gap-2 mt-3">
