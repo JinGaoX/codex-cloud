@@ -20,7 +20,6 @@ import { SiteFooter } from '@/components/site-footer';
 import { APP_BRAND } from '@/lib/app-brand';
 import { IS_STANDALONE } from '@/lib/runtime-mode';
 import { appPath } from '@/lib/app-path';
-import { DirectMediaEntry } from '@/components/direct-media-entry';
 import { ContinueWatching } from '@/components/continue-watching';
 import { requestAppPanel } from '@/lib/app-navigation';
 
@@ -121,7 +120,7 @@ function HomeContent() {
             ? { key: searchRequestKey, outcomes: [...prev.outcomes, outcome] }
             : prev);
           for (const ev of useAppStore.getState().recordSourceHealth([outcome])) {
-            toast(
+            if (!IS_STANDALONE) toast(
               ev.permanent
                 ? `「${sourceName(ev.key)}」多次失败，已停止参与搜索，可在设置中恢复`
                 : `「${sourceName(ev.key)}」连续超时/失败，已停用 ${formatDisableTtl(ev.ttlMs ?? 0)}`,
@@ -195,6 +194,7 @@ function HomeContent() {
     streamedOutcomes
       .filter((o) => !o.ok)
       .map((o) => ({ sourceKey: o.sourceKey, error: o.error || '请求失败', timedOut: o.timedOut }));
+  const standaloneSourceFailure = IS_STANDALONE && !isSearching && list.length === 0 && failures.length > 0;
   // 跨源同名聚合：同名影片合并为一张卡片，展开后可选择具体来源
   const groups = useMemo(() => aggregateResults(list), [list]);
 
@@ -207,7 +207,7 @@ function HomeContent() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className={cn('relative flex-1 max-w-6xl w-full mx-auto px-4', IS_STANDALONE ? 'py-5 sm:py-6' : 'py-6')}>
+      <main className={cn('relative flex-1 max-w-6xl w-full mx-auto px-4', IS_STANDALONE ? 'vip-home py-5 sm:py-7 lg:py-8' : 'py-6')}>
         {/* 首屏氛围渐变 */}
         {!urlQuery && (
           <div
@@ -215,18 +215,21 @@ function HomeContent() {
             className="pointer-events-none absolute inset-x-0 top-0 h-[420px] -z-10"
             style={{
               background:
-                'radial-gradient(60% 60% at 50% 0%, rgba(35,173,229,0.10) 0%, rgba(35,173,229,0.03) 45%, transparent 75%)',
+                'radial-gradient(70% 70% at 50% 0%, rgba(211,178,120,0.055) 0%, transparent 75%)',
             }}
           />
         )}
 
         {/* 搜索区 */}
-        <section className={cn('flex flex-col items-center', urlQuery ? 'mb-6' : IS_STANDALONE ? 'mt-1 mb-6 sm:mt-3' : 'mt-8 mb-8')}>
+        <section className={cn('flex flex-col items-center', urlQuery ? 'mb-6' : IS_STANDALONE ? 'mt-0 mb-6 sm:mb-7' : 'mt-8 mb-8')}>
           {!urlQuery && (
             IS_STANDALONE ? (
-              <header className="w-full max-w-2xl mb-4">
-                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-content">想看什么？</h1>
-                <p className="text-sm text-muted mt-2">找电影、追剧，接着上次继续看。</p>
+              <header className="w-full mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-medium tracking-[0.2em] text-accent mb-1.5">你的私人放映厅</p>
+                  <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-content">好片，慢慢看。</h1>
+                </div>
+                <svg aria-hidden="true" className="hidden sm:block w-12 h-12 text-accent/20" viewBox="0 0 48 48" fill="none"><path d="m10 14 12 20 15-26" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M8 38h32" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
               </header>
             ) : (
               <header className="text-center mb-6">
@@ -236,7 +239,7 @@ function HomeContent() {
           )}
           {urlQuery && <h1 className="sr-only">{APP_BRAND.name} 视频搜索</h1>}
           {/* 定位容器比胶囊宽一圈：浮层按它的宽度对齐，接缝处不会与胶囊边框错位 1px */}
-          <div ref={searchHistory.containerRef} className="relative w-full max-w-2xl">
+          <div ref={searchHistory.containerRef} className={cn("relative w-full", !IS_STANDALONE && "max-w-2xl")}>
             <form
               className="w-full"
               onSubmit={(e) => {
@@ -252,19 +255,19 @@ function HomeContent() {
                   // 展开时输入框这部分形状完全不发生变化，上下圆角也与下拉保持一致；
                   // 右侧与上下不留内边距，由搜索按钮拉伸填满、与搜索框边缘贴合
                   'flex items-stretch pl-4 border',
-                  IS_STANDALONE ? 'min-h-14' : 'min-h-12',
+                  IS_STANDALONE ? 'min-h-14 shadow-sm' : 'min-h-12',
                   'transition-[background-color,border-color,border-radius] duration-200',
                   searchHistory.visible
                     ? // 展开时：外框（含上圆角）沿用输入框的聚焦样式不变，只把底边改为内部分隔线，
                       // 使输入区在展开状态下仍是边界清晰的独立输入框，而非与列表糊成一片
-                      'rounded-t-xl rounded-b-none border-accent border-b-line bg-surface-raised'
-                    : 'rounded-xl border-line bg-chip focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40'
+                      'rounded-t-2xl rounded-b-none border-accent/60 border-b-line bg-surface-raised'
+                    : 'rounded-2xl border-line bg-card focus-within:border-accent/60 focus-within:ring-1 focus-within:ring-accent/20'
                 )}
               >
                 <input
                   ref={inputRef}
                   className="flex-1 min-w-0 pr-2 bg-transparent text-base sm:text-sm text-content placeholder:text-faint focus:outline-none"
-                  placeholder="输入影片名称..."
+                  placeholder="搜索电影、剧集"
                   enterKeyHint="search"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -306,9 +309,9 @@ function HomeContent() {
                 <button
                   type="submit"
                   className={cn(
-                    'btn-primary shrink-0 min-h-12 px-4 font-medium transition-[background-color,filter] active:brightness-90',
-                    '!rounded-l-none',
-                    searchHistory.visible ? '!rounded-tr-xl !rounded-br-none' : '!rounded-r-xl'
+                    'btn-primary shrink-0 min-h-11 px-4 font-medium transition-[background-color,filter] active:brightness-90',
+                    IS_STANDALONE ? '!rounded-xl self-center mr-1.5' : '!rounded-l-none',
+                    !IS_STANDALONE && (searchHistory.visible ? '!rounded-tr-xl !rounded-br-none' : '!rounded-r-xl')
                   )}
                 >
                   <Icon name="search" className="w-4 h-4" />
@@ -344,24 +347,24 @@ function HomeContent() {
                 ) : (
                   searchQuery.data && (
                     <span className="text-faint">
-                      （{groups.length} 部影片 · {list.length} 条结果{failures.length > 0 && `，${failures.length} 个源失败`}）
+                      （{groups.length} 部影片 · {list.length} 条结果{!IS_STANDALONE && failures.length > 0 && `，${failures.length} 个源失败`}）
                     </span>
                   )
                 )}
               </h2>
             </div>
 
-            {searchWarning && selectedSources.length > 0 && (
+            {(searchWarning || standaloneSourceFailure) && selectedSources.length > 0 && (!IS_STANDALONE || list.length === 0) && (
               <div role="status" className="mb-3 text-sm bg-chip rounded-lg px-3 py-2 flex flex-wrap items-center gap-2">
-                <span className="flex-1 text-warning">{searchWarning}</span>
-                <button className="btn-ghost btn-sm" disabled={searchQuery.isFetching}
+                <span className="flex-1 text-muted">{IS_STANDALONE ? "搜索暂时没有完成，请稍后重试。" : searchWarning}</span>
+                <button className="btn-ghost btn-sm min-h-11" disabled={searchQuery.isFetching}
                   onClick={() => void searchQuery.refetch()}>
                   {searchQuery.isFetching ? '正在重试…' : '重试搜索'}
                 </button>
               </div>
             )}
 
-            {failures.length > 0 && (
+            {!IS_STANDALONE && failures.length > 0 && (
               <div className="mb-3 text-xs bg-chip rounded-lg px-3 py-2 flex flex-wrap gap-x-3 gap-y-1">
                 <span className="text-faint">{isSearching ? '以下源暂时无响应：' : '部分点播源请求失败：'}</span>
                 {failures.map((f) => (
@@ -380,14 +383,14 @@ function HomeContent() {
               </div>
             )}
 
-            {disabledSources.length > 0 && (
+            {!IS_STANDALONE && disabledSources.length > 0 && (
               <div className="mb-3 text-xs text-faint bg-chip rounded-lg px-3 py-2">
                 {disabledSources.length} 个源因连续超时/失败已暂停参与搜索（临时停用的到期自动恢复，
                 长期停用的需在设置中手动恢复）：{disabledSources.map((key) => sourceName(key)).join('、')}
               </div>
             )}
 
-            {offSubscriptionSources.length > 0 && (
+            {!IS_STANDALONE && offSubscriptionSources.length > 0 && (
               <div className="mb-3 text-xs text-faint bg-chip rounded-lg px-3 py-2">
                 {offSubscriptionSources.length} 个源所属的订阅已停用，未参与本次搜索（在设置 → 数据源订阅中可重新启用）：
                 {offSubscriptionSources.map((key) => sourceName(key)).join('、')}
@@ -424,8 +427,8 @@ function HomeContent() {
             ) : (
               <EmptyState
                 icon="search"
-                title={searchWarning ? '搜索暂未完成' : '没有找到匹配的结果'}
-                description={searchWarning ? '请重试搜索，或在设置中检查点播源' : '请尝试其他关键词或更换点播源'}
+                title={searchWarning || standaloneSourceFailure ? '搜索暂未完成' : '没有找到匹配的结果'}
+                description={searchWarning || standaloneSourceFailure ? '请重试搜索，或在设置中检查点播源' : '请尝试其他关键词或更换点播源'}
                 className="!py-16"
               />
             )}
@@ -437,7 +440,6 @@ function HomeContent() {
             <ContinueWatching />
             {selectedSources.length === 0 && <NoSourceGuide hasSources={customAPIs.length > 0 || envSources.length > 0} />}
             <DiscoverySection onPick={(title) => { setInput(title); runSearch(title); }} />
-            <DirectMediaEntry />
           </>
         )}
 
@@ -452,7 +454,7 @@ function HomeContent() {
         )}
       </main>
 
-      <SiteFooter />
+      {!IS_STANDALONE && <SiteFooter />}
 
       <DetailModal item={detailItem} onClose={() => setDetailItem(null)} />
     </div>
@@ -481,18 +483,18 @@ function ResultsSkeleton() {
 function NoSourceGuide({ hasSources = false }: { hasSources?: boolean }) {
   if (IS_STANDALONE) {
     return (
-      <section className="w-full max-w-2xl mx-auto mb-5 rounded-2xl border border-line bg-card p-5 sm:p-6" aria-label="连接片源">
+      <section className="w-full mx-auto mb-5 rounded-2xl border border-line bg-card p-4 sm:p-5" aria-label="连接片源">
         <div className="flex items-start gap-3">
           <div className="w-11 h-11 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0"><Icon name="link" /></div>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-content">{hasSources ? '选择要搜索的片源' : '连接你的片库'}</h2>
-            <p className="text-sm text-muted leading-6 mt-1">{hasSources ? '打开设置，勾选至少一个点播源，就可以开始搜索。' : '添加你有权使用的影视 API，电影和剧集会从这里开始。'}</p>
+            <p className="text-sm text-muted leading-6 mt-1">{hasSources ? '打开设置，勾选至少一个点播源，就可以开始搜索。' : '在设置中添加片源，就能搜索和播放。'}</p>
           </div>
         </div>
         <button type="button" className="btn-primary min-h-12 w-full mt-4" onClick={() => requestAppPanel('settings')}>
           <Icon name={hasSources ? 'gear' : 'plus'} className="w-4 h-4" />打开设置
         </button>
-        <p className="text-xs text-faint leading-5 mt-3">不内置片源。请使用允许手机直接访问的 HTTPS Apple CMS JSON API。</p>
+
       </section>
     );
   }

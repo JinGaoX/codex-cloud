@@ -88,6 +88,10 @@ interface PlayerShellProps {
   onTimeUpdate?: (position: number, duration: number) => void;
   onEnded?: () => void;
   onPause?: (position: number, duration: number) => void;
+  /** Checked before autoplay and on native media events so iOS background throttling cannot resume an expired timer. */
+  canPlay?: () => boolean;
+  timerStopped?: boolean;
+  onResumeFromTimer?: () => void;
   /**
    * 实测画质（视频高度，像素）。
    * 单码率 m3u8 / 直链的分辨率只能等解码后才知道，播放一次后回写缓存，
@@ -121,6 +125,9 @@ export function PlayerShell({
   onTimeUpdate,
   onEnded,
   onPause,
+  canPlay,
+  timerStopped,
+  onResumeFromTimer,
   onQuality,
   onRequestSwitchSource,
   onPrevEpisode,
@@ -144,14 +151,14 @@ export function PlayerShell({
     url, title, adFilter, autoplayNext, skipMark, autoSkipSegments,
     pendingStart, onPendingStart, onPlayerApi, onRecordSegment,
     episodeKey, nextUrl, nextEpisodeKey,
-    getRestorePosition, onTimeUpdate, onEnded, onPause, onQuality, onRequestSwitchSource,
+    getRestorePosition, onTimeUpdate, onEnded, onPause, canPlay, onResumeFromTimer, onQuality, onRequestSwitchSource,
     onPrevEpisode, onNextEpisode, hasPrevEpisode, hasNextEpisode,
   });
   propsRef.current = {
     url, title, adFilter, autoplayNext, skipMark, autoSkipSegments,
     pendingStart, onPendingStart, onPlayerApi, onRecordSegment,
     episodeKey, nextUrl, nextEpisodeKey,
-    getRestorePosition, onTimeUpdate, onEnded, onPause, onQuality, onRequestSwitchSource,
+    getRestorePosition, onTimeUpdate, onEnded, onPause, canPlay, onResumeFromTimer, onQuality, onRequestSwitchSource,
     onPrevEpisode, onNextEpisode, hasPrevEpisode, hasNextEpisode,
   };
 
@@ -419,6 +426,10 @@ export function PlayerShell({
         restoreCleanupRef.current?.();
         restoreCleanupRef.current = null;
         ensurePrefetch(mediaUrl, prefetchAnchor);
+        if (propsRef.current.canPlay?.() === false) {
+          video.pause();
+          return;
+        }
         video.play().catch((reason: unknown) => {
           if (loadId !== mediaLoadIdRef.current) return;
           if (reason instanceof DOMException && reason.name === 'NotAllowedError') {
@@ -687,7 +698,20 @@ export function PlayerShell({
       } catch { /* 忽略 */ }
     });
 
+    const enforcePlaybackGuard = () => {
+      if (propsRef.current.canPlay?.() === false) {
+        art.video.pause();
+        return false;
+      }
+      return true;
+    };
+    art.video.addEventListener('play', enforcePlaybackGuard);
+    const checkOnReturn = () => { enforcePlaybackGuard(); };
+    document.addEventListener('visibilitychange', checkOnReturn);
+    window.addEventListener('pageshow', checkOnReturn);
+    window.addEventListener('focus', checkOnReturn);
     art.on('video:playing', () => {
+      if (!enforcePlaybackGuard()) return;
       playbackStartedRef.current = true;
       setNeedsPlayGesture(false);
       setShowPoster(false);
@@ -722,6 +746,7 @@ export function PlayerShell({
       setError('视频播放失败，请尝试其他视频源');
     });
     art.on('video:timeupdate', () => {
+      if (!enforcePlaybackGuard()) return;
       const now = Date.now();
       if (restoredRef.current && now - lastSave > 5000) {
         lastSave = now;
@@ -986,6 +1011,10 @@ export function PlayerShell({
       el?.removeEventListener('touchmove', onTouchMove);
       el?.removeEventListener('contextmenu', onContextMenu);
       art.video?.removeEventListener('resize', reportVideoHeight);
+      art.video?.removeEventListener('play', enforcePlaybackGuard);
+      document.removeEventListener('visibilitychange', checkOnReturn);
+      window.removeEventListener('pageshow', checkOnReturn);
+      window.removeEventListener('focus', checkOnReturn);
       el?.removeEventListener('mousemove', showControlsOnPointerMove);
       el?.removeEventListener('mouseleave', hideControlsOnMouseLeave);
       if (controlHideTimer) clearTimeout(controlHideTimer);
@@ -1070,7 +1099,24 @@ export function PlayerShell({
           }}
         />
       )}
-      {needsPlayGesture && !error && (
+      {timerStopped && !error && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/65 text-white">
+          <p className="text-sm">定时播放已结束</p>
+          <button
+            type="button"
+            className="min-h-12 rounded-full bg-white px-6 text-sm font-medium text-black"
+            onClick={() => {
+              propsRef.current.onResumeFromTimer?.();
+              endedRef.current = false;
+              const video = artRef.current?.video as HTMLVideoElement | undefined;
+              if (propsRef.current.canPlay?.() !== false) {
+                video?.play().then(() => setNeedsPlayGesture(false)).catch(() => setNeedsPlayGesture(true));
+              }
+            }}
+          >继续播放</button>
+        </div>
+      )}
+      {needsPlayGesture && !error && !timerStopped && (
         <button
           type="button"
           className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 text-white"
@@ -1078,6 +1124,7 @@ export function PlayerShell({
           onClick={() => {
             // Call play directly in the click stack; awaiting storage here loses iOS activation.
             const video = artRef.current?.video as HTMLVideoElement | undefined;
+            if (propsRef.current.canPlay?.() === false) return;
             video?.play().then(() => setNeedsPlayGesture(false)).catch(() => {
               showHint('请再次点击播放；若仍失败，请切换资源');
             });
@@ -1134,11 +1181,6 @@ export function PlayerShell({
               撤销
             </button>
           )}
-        </div>
-      )}
-      {autoplayNext && !error && (
-        <div className="absolute bottom-16 right-3 text-[10px] text-muted bg-black/50 px-2 py-0.5 rounded pointer-events-none">
-          自动连播已开启
         </div>
       )}
     </div>

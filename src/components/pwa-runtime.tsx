@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { APP_BRAND } from '@/lib/app-brand';
 import { appPath } from '@/lib/app-path';
 import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
 import { Drawer } from './drawer';
+import { useAuth } from './auth';
+import {
+  applyAppUpdate, checkForAppUpdate, getAppUpdateState, getServerAppUpdateState,
+  startQuietAppUpdates, subscribeAppUpdates,
+} from '@/lib/pwa-updates';
 
 function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches ||
@@ -19,7 +24,7 @@ type InstallPromptEvent = Event & {
 
 /** Safari has no install API: keep the real Share → Add to Home Screen instructions available. */
 export function InstallAppButton() {
-  return IS_NATIVE ? null : <WebInstallAppButton />;
+  return IS_STANDALONE ? null : <WebInstallAppButton />;
 }
 
 function WebInstallAppButton() {
@@ -104,28 +109,44 @@ function WebInstallAppButton() {
 
 /** Server mode caches public assets; the standalone build also saves its public static shell. */
 export function PwaRuntime() {
-  return IS_NATIVE ? <NativeConnectivityStatus /> : <WebPwaRuntime />;
+  if (IS_NATIVE) return null;
+  return IS_STANDALONE ? <QuietStandaloneRuntime /> : <WebPwaRuntime />;
 }
 
-/** Native resources ship inside the app; no web worker or online update is needed. */
-function NativeConnectivityStatus() {
-  const [offline, setOffline] = useState(false);
-  useEffect(() => {
-    const sync = () => setOffline(!navigator.onLine);
-    sync();
-    window.addEventListener('online', sync);
-    window.addEventListener('offline', sync);
-    return () => {
-      window.removeEventListener('online', sync);
-      window.removeEventListener('offline', sync);
-    };
-  }, []);
+function QuietStandaloneRuntime() {
+  useEffect(startQuietAppUpdates, []);
+  return null;
+}
 
-  if (!offline) return null;
+/** Updates are an intentional Settings action, with no homepage/install/offline banners. */
+export function AppUpdateSettings() {
+  const update = useSyncExternalStore(subscribeAppUpdates, getAppUpdateState, getServerAppUpdateState);
+  const { version } = useAuth();
+  const busy = update.phase === 'checking' || update.phase === 'applying';
+  const ready = update.phase === 'available';
+  const message = update.message ?? (
+    update.phase === 'current' ? '当前已是最新版本。'
+      : update.phase === 'checking' ? '正在检查更新…'
+      : update.phase === 'applying' ? '正在重新打开…'
+      : ready ? '新版本已准备好。'
+      : update.phase === 'failed' ? '暂时无法检查更新，请联网后重试。'
+      : update.phase === 'unsupported' ? '当前浏览器无法检查更新，请联网后重新打开。'
+      : ''
+  );
   return (
-    <div className="pwa-status fixed inset-x-0 bottom-0 z-40 bg-surface border-t border-line px-4 py-2 text-center text-sm text-muted" role="status">
-      已离线，可查看本机收藏、历史和设置；搜索和在线播放需联网。
-    </div>
+    <section className="space-y-4">
+      <div>
+        <h3 className="text-sm font-medium text-content">应用更新</h3>
+        {version && <p className="mt-2 text-xs text-muted">当前版本 {version}</p>}
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <button type="button" className="btn-ghost min-h-11" disabled={busy} onClick={() => void checkForAppUpdate()}>
+          {update.phase === 'checking' ? '正在检查…' : '检查更新'}
+        </button>
+        {ready && <button type="button" className="btn-primary min-h-11" onClick={applyAppUpdate}>更新并重新打开</button>}
+      </div>
+      {message && <p role="status" className="text-sm text-muted leading-6">{message}</p>}
+    </section>
   );
 }
 

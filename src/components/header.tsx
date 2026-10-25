@@ -84,12 +84,12 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur border-b border-line">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
+      <header className={cn("sticky top-0 z-40 bg-surface/90 backdrop-blur-xl border-b border-line", IS_STANDALONE && "vip-header")}>
+        <div className={cn("max-w-6xl mx-auto px-4 flex items-center gap-3", IS_STANDALONE ? "h-16" : "h-14")}>
           <Link href="/" aria-label={`${APP_BRAND.name} 首页`} className={cn('flex items-center shrink-0', IS_STANDALONE && 'gap-2.5 min-h-11')}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={APP_BRAND.icons.large} alt={APP_BRAND.name} className="w-7 h-7 rounded-lg" />
-            {IS_STANDALONE && <span className="md:hidden leading-tight"><span className="block font-semibold tracking-wide text-content">{APP_BRAND.shortName}</span><span className="block mt-0.5 text-[10px] text-muted">随身影院</span></span>}
+            <img src={APP_BRAND.icons.large} alt={APP_BRAND.name} className={cn("rounded-lg", IS_STANDALONE ? "w-9 h-9 rounded-xl" : "w-7 h-7")} />
+            {IS_STANDALONE && <span className="leading-tight"><span className="block text-lg font-semibold tracking-wide text-content">{APP_BRAND.shortName}</span><span className="block mt-0.5 text-[9px] tracking-[0.16em] text-faint">电影 · 剧集 · 综艺</span></span>}
           </Link>
 
           {showSearch && (
@@ -146,11 +146,7 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
 
           {IS_STANDALONE && (
             <nav aria-label="应用工具" className="flex items-center ml-auto md:hidden [&_button]:min-h-11 [&_button]:min-w-11 [&_button]:inline-flex [&_button]:items-center [&_button]:justify-center">
-              <Link href="/about" aria-label="关于" aria-current={pathname === '/about' ? 'page' : undefined} title="关于 LibreTV" className="w-11 h-11 inline-flex items-center justify-center rounded-xl text-muted hover:text-content hover:bg-hover">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path strokeLinecap="round" d="M12 11v6m0-10v.1" /></svg>
-              </Link>
               <ThemeToggle />
-              <InstallAppButton />
             </nav>
           )}
 
@@ -181,7 +177,7 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
         <nav
           aria-label="主要导航"
           data-mobile-tab-bar
-          className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface/95 backdrop-blur-xl md:hidden"
+          className="vip-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface/95 backdrop-blur-xl md:hidden"
           style={{ display: inputFocused ? 'none' : undefined, paddingBottom: 'env(safe-area-inset-bottom)', paddingLeft: 'max(12px, env(safe-area-inset-left))', paddingRight: 'max(12px, env(safe-area-inset-right))' }}
         >
           <MobileNavItem label="首页" active={pathname === '/' && !settingsOpen && !historyOpen && !favoritesOpen} page onClick={() => {
@@ -219,9 +215,9 @@ function MobileNavItem({ label, ariaLabel, active, page = false, onClick, childr
       aria-current={page && active ? 'page' : undefined}
       aria-pressed={page ? undefined : active}
       onClick={onClick}
-      className={cn('relative h-16 min-w-11 flex flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', active ? 'text-accent' : 'text-muted active:bg-hover')}
+      className={cn('relative h-16 min-w-11 flex flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent', active ? 'text-accent' : 'text-faint active:bg-hover')}
     >
-      <span className={cn('flex h-7 w-12 items-center justify-center rounded-full transition-colors', active && 'bg-accent/10')}>{children}</span>
+      <span className={cn('flex h-7 w-12 items-center justify-center rounded-xl transition-colors [&_svg]:w-[21px] [&_svg]:h-[21px]', active && 'bg-accent/10')}>{children}</span>
       <span>{label}</span>
     </button>
   );
@@ -244,12 +240,13 @@ function HeaderLink({ href, active, children }: { href: string; active: boolean;
 function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
-      className="p-2 rounded-md text-muted hover:text-content hover:bg-hover transition-colors"
+      className="min-w-11 min-h-11 px-2.5 rounded-xl inline-flex items-center justify-center gap-2 text-muted hover:text-content hover:bg-hover transition-colors"
       title={label}
       aria-label={label}
       onClick={onClick}
     >
       {children}
+      {IS_STANDALONE && <span className="text-xs">{label.replace(/^我的|^观看/, '')}</span>}
     </button>
   );
 }

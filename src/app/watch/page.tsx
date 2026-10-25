@@ -41,6 +41,8 @@ import {
 import { cn } from '@/lib/utils';
 import { IS_STANDALONE } from '@/lib/runtime-mode';
 import { DIRECT_MEDIA_SOURCE } from '@/lib/standalone-media';
+import { getSleepTimer } from '@/lib/sleep-timer';
+import { SleepTimerControl, useSleepTimer } from '@/components/sleep-timer-control';
 
 /**
  * 播放页（唯一入口，替代旧版 watch.html → player.html 跳转链）。
@@ -74,6 +76,20 @@ function WatchContent() {
   const [skipPanelOpen, setSkipPanelOpen] = useState(false);
   // 播放器对外暴露的精确时间读取接口（「记录当前」用），随播放器卸载置空
   const playerApiRef = useRef<PlayerSkipApi | null>(null);
+  const autoNextTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sleepTimer = useSleepTimer();
+  const checkTimerCanPlay = useCallback(() => {
+    if (getSleepTimer().canPlay()) return true;
+    if (autoNextTimer.current) {
+      clearTimeout(autoNextTimer.current);
+      autoNextTimer.current = null;
+    }
+    playerApiRef.current?.pause();
+    return false;
+  }, []);
+  useEffect(() => {
+    if (sleepTimer.mode === 'stopped') checkTimerCanPlay();
+  }, [sleepTimer, checkTimerCanPlay]);
   // 播放框：小屏「跳过标记」抽屉要按它的底边算剩余高度，避免压住画面
   const playerFrameRef = useRef<HTMLDivElement | null>(null);
   const [sheetMaxHeight, setSheetMaxHeight] = useState<number | undefined>(undefined);
@@ -211,17 +227,23 @@ function WatchContent() {
   );
 
   // 自动连播的 800ms 延迟切集要在卸载时取消，避免离开页面后跳转
-  const autoNextTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (autoNextTimer.current) clearTimeout(autoNextTimer.current);
   }, []);
 
   const handleEnded = useCallback(() => {
     if (vodId) clearProgress(sourceKey, vodId, currentIndex).catch(() => {});
+    getSleepTimer().finishEpisode();
+    if (!checkTimerCanPlay()) return;
     if (store.autoplayNext && currentIndex < episodes.length - 1) {
-      autoNextTimer.current = setTimeout(() => goEpisode(currentIndex + 1), 800);
+      autoNextTimer.current = setTimeout(() => {
+        autoNextTimer.current = null;
+        // The user may choose “after this episode” during the hand-off delay.
+        getSleepTimer().finishEpisode();
+        if (checkTimerCanPlay()) goEpisode(currentIndex + 1);
+      }, 800);
     }
-  }, [store.autoplayNext, currentIndex, episodes.length, goEpisode, sourceKey, vodId]);
+  }, [store.autoplayNext, currentIndex, episodes.length, goEpisode, sourceKey, vodId, checkTimerCanPlay]);
 
   // 快捷键（Shift+I/O/S/E）记录片段：校验后写入
   const handleRecordSegment = useCallback(
@@ -342,7 +364,10 @@ function WatchContent() {
                   url={currentUrl}
                   title={videoTitle}
                   adFilter={store.adFilter}
-                  autoplayNext={!isDirectMedia && store.autoplayNext}
+                  autoplayNext={!isDirectMedia && store.autoplayNext && sleepTimer.mode !== 'episode' && sleepTimer.mode !== 'stopped'}
+                  canPlay={checkTimerCanPlay}
+                  timerStopped={sleepTimer.mode === 'stopped'}
+                  onResumeFromTimer={() => getSleepTimer().cancel()}
                   skipMark={skipMark}
                   autoSkipSegments={store.autoSkipSegments}
                   pendingStart={pendingStart}
@@ -383,9 +408,12 @@ function WatchContent() {
               )}
             </div>
 
-            <p className="mt-3 text-sm text-faint" aria-live="polite">
-              {actualResolution ? `当前分辨率 ${actualResolution}` : '分辨率将在视频加载后显示'}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+              <p className="text-sm text-faint" aria-live="polite">
+                {actualResolution ? `当前分辨率 ${actualResolution}` : '分辨率将在视频加载后显示'}
+              </p>
+              <SleepTimerControl state={sleepTimer} />
+            </div>
 
             {/* 操作栏 */}
             {!isDirectMedia && <div className="flex flex-wrap items-center gap-2 mt-3">

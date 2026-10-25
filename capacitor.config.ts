@@ -3,9 +3,9 @@ import type { CapacitorConfig } from '@capacitor/cli';
 /** All application code ships inside the app. Never set a remote server.url. */
 const config: CapacitorConfig = {
   appId: 'org.libretv.personal',
-  appName: 'LibreTV',
+  appName: 'VIP影视',
   webDir: 'native-dist',
-  backgroundColor: '#0b101a',
+  backgroundColor: '#0b0e14',
   server: { hostname: 'localhost', iosScheme: 'capacitor' },
   ios: {
     contentInset: 'never',

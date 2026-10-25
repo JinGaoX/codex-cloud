@@ -1,0 +1,24 @@
+{
+  "name": "VIP影视",
+  "kind": "original generated app icon, no existing brand artwork used",
+  "createdAt": "2026-10-25",
+  "masterPixels": [
+    1254,
+    1254
+  ],
+  "masterSha256": "ef89778d641c1a0ab9d4a72e91ea4eefd5cab1f9153e9a2ba3a35df808f5f8ab",
+  "mark": "champagne gold V-shaped folded cinematic ribbon with play-shaped negative space on midnight navy",
+  "export": "scripts/export-brand-icons.mjs (resize and format conversion only)",
+  "installedIconCaveat": "iOS may retain the previous home screen icon/name; re-add via Safari without clearing website data if needed",
+  "outputs": [
+    "public/icons/vip-icon-48.png",
+    "public/icons/vip-icon-96.png",
+    "public/icons/vip-icon-144.png",
+    "public/icons/vip-icon-192.png",
+    "public/icons/vip-icon-512.png",
+    "public/icons/vip-apple-touch-icon.png",
+    "public/favicon.ico",
+    "public/player-poster.png",
+    "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"
+  ]
+}

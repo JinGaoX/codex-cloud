@@ -18,12 +18,12 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: APP_BRAND.shortName, statusBarStyle: 'black-translucent' },
   formatDetection: { telephone: false },
   manifest: appPath('/manifest.webmanifest'),
-  // 图标与门户站（LibreTV-portal）同一套：同一张 artwork 导出的多尺寸 + 根目录 favicon.ico 兜底。
+  // 原创 VIP影视 artwork 统一导出 PWA 与原生尺寸。
   // 只声明单张 512 时，抓取端只能拿大图缩放，小尺寸下易糊、看起来「没填满」。
   icons: {
     icon: [
       { url: APP_BRAND.icons.favicon, sizes: '48x48' },
-      { url: appPath('/icons/icon-96.png'), sizes: '96x96', type: 'image/png' },
+      { url: appPath('/icons/vip-icon-96.png'), sizes: '96x96', type: 'image/png' },
       { url: APP_BRAND.icons.small, sizes: '192x192', type: 'image/png' },
       { url: APP_BRAND.icons.large, sizes: '512x512', type: 'image/png' },
     ],

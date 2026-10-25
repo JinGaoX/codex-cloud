@@ -2,50 +2,43 @@
 
 import { Header } from '@/components/header';
 import { SiteFooter } from '@/components/site-footer';
+import { APP_BRAND } from '@/lib/app-brand';
 import { IS_STANDALONE } from '@/lib/runtime-mode';
+import { useAuth } from '@/components/auth';
 
 export default function AboutPage() {
+  const { version } = useAuth();
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-10 space-y-8">
-        <section>
-          <h1 className="text-xl font-bold text-content mb-3">关于 LibreTV</h1>
-          <p className="text-sm text-muted leading-relaxed">
-            LibreTV 是一个免费的在线视频搜索与观看平台。输入片名即可在多个点播源中聚合搜索，
-            无需注册、无内嵌广告、不存储任何视频文件。所有播放内容均来自第三方公开接口。
-            {IS_STANDALONE && ' 本版在手机上处理搜索、播放和本地记录，无需运行自己的电脑或搜索后台。'}
-          </p>
+      <main className="flex-1 max-w-2xl w-full mx-auto px-5 py-8 sm:py-12 space-y-8">
+        <section className="flex items-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={APP_BRAND.icons.large} alt="" className="w-20 h-20 rounded-[22px]" />
+          <div>
+            <h1 className="text-2xl font-semibold tracking-wide text-content">关于 {APP_BRAND.shortName}</h1>
+            <p className="text-sm text-muted mt-2">一方银幕，一起看好片。</p>
+            {version && <p className="text-xs text-faint mt-2">版本 {version}</p>}
+          </div>
         </section>
-
-        <section>
-          <h2 className="text-base font-semibold text-content mb-2.5">快捷键</h2>
-          <ul className="text-sm text-muted space-y-1.5 list-disc list-inside">
-            <li><code className="text-accent">空格</code> 播放 / 暂停</li>
-            <li><code className="text-accent">←</code> / <code className="text-accent">→</code> 快退 / 快进 5 秒</li>
-            <li><code className="text-accent">↑</code> / <code className="text-accent">↓</code> 音量调节</li>
-            <li><code className="text-accent">F</code> 切换全屏</li>
-            <li><code className="text-accent">Alt + ←/→</code> 上一集 / 下一集</li>
-            <li>移动端长按视频可 3 倍速播放</li>
-          </ul>
+        <section className="rounded-2xl border border-line bg-surface-raised p-5">
+          <h2 className="text-base font-semibold text-content mb-3">为相聚留一点好时光</h2>
+          <p className="text-sm text-muted leading-7">找一部电影，追一部好剧，接着上次继续看。{APP_BRAND.shortName} 基于你添加的片源提供搜索、选集和播放，并保存本机收藏与进度。</p>
+          <p className="text-sm text-muted leading-7 mt-2">播放页可设置定时停止，或者在本集结束后停止。倒计时以实际经过的时间计算；手机系统可能限制后台执行，回到应用时会重新检查截止时间。</p>
         </section>
-
         <section>
-          <h2 className="text-base font-semibold text-content mb-2.5">隐私与数据</h2>
-          <p className="text-sm text-muted leading-relaxed">
-            你的搜索历史、观看进度等数据仅保存在本设备浏览器中（IndexedDB），不会上传到服务器。
-            {IS_STANDALONE
-              ? '搜索和视频由手机直接访问你选择的来源，来源服务会收到正常网络请求。清除网站数据或卸载可能移除本地记录，请定期导出备份。'
-              : '聚合搜索请求由服务端代理转发，第三方数据源不会看到你的 IP 地址。'}
-          </p>
+          <h2 className="text-base font-semibold text-content mb-3">你的记录，留在本机</h2>
+          <p className="text-sm text-muted leading-7">片源配置、收藏和观看记录保存在当前设备，本版不要求开屏密码。可在设置中导出备份；清除网站数据或卸载可能移除这些记录。</p>
+          <p className="text-sm text-muted leading-7 mt-2">{IS_STANDALONE ? '搜索和视频由设备直接访问你选择的来源。' : '搜索由你部署的服务处理。'}来源会收到正常网络请求；本应用不存储或下载影片。</p>
         </section>
-
+        <details className="rounded-2xl border border-line px-5 py-1">
+          <summary className="min-h-12 cursor-pointer text-sm font-medium text-content">榜单与影片信息</summary>
+          <p className="text-sm text-muted leading-7 pb-4">首页榜单通过 <a className="text-accent" href="https://github.com/vikiboss/60s" target="_blank" rel="noopener noreferrer">60s API</a> 读取豆瓣周榜和百度热播剧榜。评分按来源显示，喜剧和8分以上筛选只作用于当前榜单。推荐条目用于搜索你的片源，实际收录、播放及清晰度以来源为准。</p>
+        </details>
         <section>
-          <h2 className="text-base font-semibold text-content mb-2.5">免责声明</h2>
-          <p className="text-sm text-faint leading-relaxed">
-            本项目不存储、不制作任何视频内容，仅提供第三方公开接口的聚合与播放能力。
-            请尊重版权，所有内容的合法性由对应数据源负责。
-          </p>
+          <h2 className="text-base font-semibold text-content mb-3">开源与版权</h2>
+          <p className="text-sm text-muted leading-7">本项目基于 <a className="text-accent" href="https://github.com/LibreSpark/LibreTV" target="_blank" rel="noopener noreferrer">LibreTV</a> 修改，保留原作者版权声明，遵循 AGPL-3.0-or-later。<a className="text-accent" href={APP_BRAND.sourceUrl}>取得本修改版对应源码</a>。新名称与原创图标不代表与其他影视品牌存在关联。</p>
+          <p className="text-sm text-muted leading-7 mt-2">请使用合法可用的影视来源。本应用仅提供播放器与搜索工具。</p>
         </section>
       </main>
       <SiteFooter />

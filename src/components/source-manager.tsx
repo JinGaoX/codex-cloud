@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Drawer } from './drawer';
 import { ConfirmDialog } from './confirm-dialog';
 import { Icon, type IconName } from './icon';
@@ -31,8 +32,9 @@ import { api } from '@/lib/client-api';
 import { syncSourceSubscription } from '@/lib/subscription-sync';
 import { describeParseStats } from '@/lib/tvbox-parser';
 import { IS_NATIVE, IS_STANDALONE } from '@/lib/runtime-mode';
-import { DeviceLockSettings } from './device-lock-gate';
+import { AppUpdateSettings } from './pwa-runtime';
 import { exportTextFile, localFileExportMessage } from '@/lib/local-file-export';
+import { APP_BRAND } from '@/lib/app-brand';
 
 /**
  * 设置抽屉：顶部两级导航。
@@ -42,7 +44,7 @@ import { exportTextFile, localFileExportMessage } from '@/lib/local-file-export'
  */
 
 type PrimaryTab = 'sources' | 'prefs' | 'data';
-type SecondaryTab = 'vod' | 'live' | 'subs' | 'playback' | 'image' | 'home' | 'io' | 'lock';
+type SecondaryTab = 'vod' | 'live' | 'subs' | 'playback' | 'image' | 'home' | 'io' | 'updates';
 
 const PRIMARY_TABS: { id: PrimaryTab; label: string; icon: IconName }[] = [
   { id: 'sources', label: '源管理', icon: 'link' },
@@ -64,7 +66,9 @@ const SECONDARY_TABS: Record<PrimaryTab, { id: SecondaryTab; label: string }[]> 
     { id: 'image', label: '封面图加载' },
     { id: 'home', label: '首页与内容' },
   ],
-  data: IS_STANDALONE ? [{ id: 'io', label: '配置导入导出' }, { id: 'lock', label: '本机密码' }] : [{ id: 'io', label: '配置导入导出' }],
+  data: IS_STANDALONE && !IS_NATIVE
+    ? [{ id: 'io', label: '配置导入导出' }, { id: 'updates', label: '应用更新' }]
+    : [{ id: 'io', label: '配置导入导出' }],
 };
 
 const TAB_STORAGE_KEY = 'libretv-settings-tab';
@@ -143,7 +147,14 @@ export function SourceManagerDrawer({ open, onClose }: { open: boolean; onClose:
       {current === 'home' && <HomePanel />}
       {current === 'subs' && <SourceSubscriptions />}
       {current === 'io' && <ConfigIoPanel />}
-      {current === 'lock' && <DeviceLockSettings />}
+      {current === 'updates' && <AppUpdateSettings />}
+      {IS_STANDALONE && (
+        <div className="mt-6 border-t border-line pt-3">
+          <Link href="/about" onClick={onClose} className="min-h-11 inline-flex items-center text-sm text-muted hover:text-content">
+            关于 {APP_BRAND.shortName}
+          </Link>
+        </div>
+      )}
     </Drawer>
   );
 }

@@ -282,3 +282,31 @@ header.sticky.top-0 { padding-top: env(safe-area-inset-top); }
     min-width: 40px !important;
   }
 }
+
+/* Personal cinema theme; the original full-stack theme is kept independent. */
+.dark .app-shell-mode {
+  --c-page: 11 14 20;
+  --c-surface: 17 22 31;
+  --c-surface-raised: 20 26 36;
+  --c-card: 17 22 31;
+  --c-chip: 24 30 40;
+  --c-hover: 32 39 51;
+  --c-line: 40 46 58;
+  --c-content: 236 237 240;
+  --c-muted: 161 166 177;
+  --c-faint: 145 151 164;
+  --c-on-accent: 33 25 14;
+  background: radial-gradient(ellipse at 85% 0, rgba(211,178,120,0.035), transparent 38%), #0b0e14;
+}
+.app-shell-mode .vip-header { border-bottom-color: rgb(var(--c-line) / 0.65); }
+.app-shell-mode .vip-bottom-nav { border-top-color: rgb(var(--c-line) / 0.65); }
+.app-shell-mode .vip-cover-empty {
+  background: radial-gradient(ellipse at 70% 25%, rgba(211,178,120,0.15), transparent 60%), #17202c;
+}
+.app-shell-mode .vip-featured { background: #10151d; border: 1px solid rgba(211,178,120,0.1); }
+.app-shell-mode .vip-category { -webkit-tap-highlight-color: transparent; }
+@media (max-width: 359px) {
+  .app-shell-mode .vip-featured h2 { font-size: 1.25rem; }
+  .app-shell-mode .vip-featured > div:last-child { padding-left: 16px; padding-right: 16px; gap: 12px; }
+  .app-shell-mode .vip-featured > div:last-child > div:last-child { width: 80px; }
+}
