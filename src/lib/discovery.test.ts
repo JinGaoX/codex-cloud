@@ -40,6 +40,44 @@ describe('public discovery normalization and filters', () => {
     expect(items.every((item) => item.isTv)).toBe(true);
   });
 
+  it('preserves existing LibreTV poster mirrors and the feed fallback when original Douban images reject browser requests', () => {
+    const [item] = normalizeDiscoveryItems([{
+      id: 'poster', title: '有海报的影片',
+      cover: 'https://img9.doubanio.com/view/photo/poster.jpg?size=large',
+      cover_proxy: 'https://doubanio.viki.moe/view/photo/poster.jpg?size=large',
+    }], 'douban_movie_weekly');
+    expect(item.cover).toBe('https://img9.doubanio.com/view/photo/poster.jpg?size=large');
+    expect(item.coverFallbacks).toEqual([
+      'https://img.doubanio.cmliussss.net/view/photo/poster.jpg?size=large',
+      'https://img.doubanio.cmliussss.com/view/photo/poster.jpg?size=large',
+      'https://doubanio.viki.moe/view/photo/poster.jpg?size=large',
+    ]);
+  });
+
+  it('matches only actual Douban image hosts and never rewrites unrelated cover URLs', () => {
+    const covers = [
+      'https://img9.doubanio.com.example.invalid/poster.jpg',
+      'https://other.example/poster.jpg?origin=img9.doubanio.com',
+      'https://doubanio.com/poster.jpg',
+    ];
+    const items = normalizeDiscoveryItems(covers.map((cover, i) => ({ id: i, title: `影片${i}`, cover })), 'douban_movie_weekly');
+    expect(items.map((item) => item.cover)).toEqual(covers);
+    expect(items.every((item) => item.coverFallbacks === undefined)).toBe(true);
+  });
+
+  it('drops unsafe alternatives, deduplicates provided images and does not invent a cover', () => {
+    const items = normalizeDiscoveryItems([
+      { id: '1', title: '无图影片', cover_proxy: 'javascript:alert(1)' },
+      { id: '2', title: '同一图片', cover: 'https://images.example/a.jpg', cover_proxy: 'https://images.example/a.jpg' },
+      { id: '3', title: '账号图片', cover: 'https://images.example/b.jpg', cover_proxy: 'https://user:password@images.example/c.jpg' },
+      { id: '4', title: '不安全备用', cover: 'https://images.example/d.jpg', cover_proxy: 'http://images.example/e.jpg' },
+      { id: '5', title: '只有备用', cover_proxy: 'https://images.example/only.jpg' },
+    ], 'douban_movie_weekly');
+    expect(items.every((item) => item.coverFallbacks === undefined)).toBe(true);
+    expect(items[0].cover).toBe('');
+    expect(items[4].cover).toBe('https://images.example/only.jpg');
+  });
+
   it('drops malformed and duplicate rows, invalid ratings and out-of-range ranks', () => {
     const items = normalizeDiscoveryItems([
       null, 'wrong', {}, { id: '1', title: '' }, { title: 'missing id' },

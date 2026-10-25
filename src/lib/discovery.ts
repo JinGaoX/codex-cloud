@@ -15,6 +15,8 @@ export type DiscoveryListId = (typeof DISCOVERY_LISTS)[number]['id'];
 export type DiscoveryFilter = 'all' | 'high-rated' | 'comedy';
 
 export interface DiscoveryItem extends DoubanItem {
+  /** Public poster alternatives only; never used for source API or video requests. */
+  coverFallbacks?: string[];
   /** Original provider rank, never a locally invented rank. */
   rank?: number;
   genres: string[];
@@ -61,6 +63,25 @@ function httpsImage(value: unknown): string {
   } catch { return ''; }
 }
 
+function posterFallbacks(cover: string, provided: unknown): string[] {
+  const alternatives: string[] = [];
+  if (cover) {
+    const image = new URL(cover);
+    // These are the same public image mirrors already supported by LibreTV's
+    // full-stack frontend. Match the actual hostname, never a query or substring.
+    if (/^img\d+\.doubanio\.com$/i.test(image.hostname)) {
+      for (const hostname of ['img.doubanio.cmliussss.net', 'img.doubanio.cmliussss.com']) {
+        const mirror = new URL(image);
+        mirror.hostname = hostname;
+        alternatives.push(mirror.href);
+      }
+    }
+  }
+  const supplied = httpsImage(provided);
+  if (supplied) alternatives.push(supplied);
+  return [...new Set(alternatives)].filter((url) => url !== cover);
+}
+
 /** The 60s feed's metadata is untrusted. Missing posters/ratings keep usable titles. */
 export function normalizeDiscoveryItems(raw: unknown, id: DiscoveryListId): DiscoveryItem[] {
   const list = DISCOVERY_LISTS.find((entry) => entry.id === id);
@@ -82,10 +103,13 @@ export function normalizeDiscoveryItems(raw: unknown, id: DiscoveryListId): Disc
     const genres = list.filterable
       ? [...new Set([...subtitleGenres.trim().split(/[、，,\s]+/), ...tags].map((tag) => tag.trim().slice(0, 30)).filter(Boolean))].slice(0, 20)
       : [];
+    const cover = httpsImage(data.cover) || httpsImage(data.cover_proxy);
+    const coverFallbacks = posterFallbacks(cover, data.cover_proxy);
     items.push({
       id: `${id}:${itemId}`,
       title,
-      cover: httpsImage(data.cover) || httpsImage(data.cover_proxy),
+      cover,
+      ...(coverFallbacks.length ? { coverFallbacks } : {}),
       ...(Number.isFinite(rating) && rating > 0 && rating <= 10 ? { rating: String(rating) } : {}),
       ...(typeof data.rank === 'number' && Number.isInteger(data.rank) && data.rank > 0 && data.rank <= 1000 ? { rank: data.rank } : {}),
       isTv: list.isTv,

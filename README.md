@@ -1,12 +1,13 @@
 # VIP影视
 
-> **VIP影视 · iPhone 15 Pro Max 独立版：`2.20.2-personal.10`**。运行 `npm ci`、`npm run build:iphone`
+> **VIP影视 · iPhone 15 Pro Max 独立版：`2.20.2-personal.11`**。运行 `npm ci`、`npm run build:iphone`
 > 生成 `out/`，可用任意静态 HTTPS 分发；不需要运行 Node 后台。
 > 安装时下载程序，之后搜索/详情由手机直接访问用户配置的 HTTPS JSON API，视频直接播放。
 > [独立版安装与离线说明](docs/iphone-standalone-pwa.zh-CN.md) · [界面和支持范围](docs/STANDALONE-UI.zh-CN.md)
 > · [手机版验证](docs/mobile-pwa-validation.zh-CN.md)。默认 `npm run build` 仍构建下方的全栈版。
 > [打开 iPhone 独立版](https://jingaox.github.io/codex-cloud/)：GitHub Pages 已上线，无需 ChatGPT 登录。
 > [GitHub 备份与恢复](docs/github-backup.zh-CN.md)：本仓库使用用户原本为空的公开仓库，`main` 为当前个人版，保留全部开发分支及上游历史。
+> 修复推荐海报因原图拒绝访问而全部占位的问题，见[推荐封面修复](docs/discovery-posters.zh-CN.md)。
 > 用户真机遇到平台 Cloudflare 拦截后，新增独立搜索导航修复及 `npm run build:pages` 备用构建。
 > GitHub Pages 开通结果及本机数据保留步骤见[托管拦截恢复说明](docs/pwa-hosting-recovery.zh-CN.md)。旧 Site 保留，用户侧拦截是否解除仍需真机复测。
 > 保留片源原始剧集标题，详情、播放与倒序选集保持一致，见[剧集标题更新](docs/episode-titles.zh-CN.md)。

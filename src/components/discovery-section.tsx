@@ -87,9 +87,9 @@ function DiscoveryContent({ onPick }: { onPick: (title: string) => void }) {
       </div>}
 
       {query.isPending ? <DiscoverySkeleton /> : featured ? <>
-        <FeaturedFilm key={featured.id} item={featured} source={selected.source} onPick={onPick} />
+        <FeaturedFilm key={`${featured.id}:${query.dataUpdatedAt}`} item={featured} source={selected.source} onPick={onPick} />
         {items.length > 1 && <div className="vip-poster-grid mt-5 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-3 gap-y-5 sm:gap-x-4" aria-label={selected.source}>
-          {items.slice(1).map((item) => <PosterCard key={item.id} item={item} onPick={onPick} />)}
+          {items.slice(1).map((item) => <PosterCard key={`${item.id}:${query.dataUpdatedAt}`} item={item} onPick={onPick} />)}
         </div>}
       </> : query.data ? <p className="text-sm text-muted py-14 text-center">
         {filter === 'comedy' ? '这个榜单里暂时没有喜剧，换个榜单看看。' : filter === 'high-rated' ? '这个榜单里暂时没有8分以上的作品。' : '暂时还没有内容，稍后再来看看。'}
@@ -100,8 +100,9 @@ function DiscoveryContent({ onPick }: { onPick: (title: string) => void }) {
 
 function FilmCover({ item, className, eager = false }: { item: DiscoveryItem; className: string; eager?: boolean }) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [item.cover]);
-  return item.cover && !failed ? <SmartImage url={item.cover} mode="direct" alt="" className={className}
+  const fallbackKey = JSON.stringify(item.coverFallbacks ?? []);
+  useEffect(() => setFailed(false), [item.cover, fallbackKey]);
+  return item.cover && !failed ? <SmartImage url={item.cover} fallbackUrls={item.coverFallbacks} mode="direct" alt="" className={className}
     loading={eager ? 'eager' : 'lazy'} onExhausted={() => setFailed(true)} /> : <div className={cn(className, 'vip-cover-empty flex items-center justify-center')}>
     <svg aria-hidden="true" className="w-10 h-10 text-accent/40" viewBox="0 0 48 48" fill="none"><rect x="8" y="8" width="32" height="32" rx="8" stroke="currentColor" strokeWidth="1.5"/><path d="m21 17 11 7-11 7V17Z" fill="currentColor"/></svg>
   </div>;

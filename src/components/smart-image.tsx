@@ -10,6 +10,8 @@ interface SmartImageProps {
   url?: string;
   mode: 'direct' | 'proxy' | 'custom';
   customProxy?: string;
+  /** Explicit public image alternatives from the caller; validated as HTTPS. */
+  fallbackUrls?: readonly string[];
   alt: string;
   className?: string;
   loading?: 'lazy' | 'eager';
@@ -27,18 +29,24 @@ export function SmartImage({
   url,
   mode,
   customProxy = '',
+  fallbackUrls = [],
   alt,
   className,
   loading = 'lazy',
   onExhausted,
 }: SmartImageProps) {
-  const candidates = IS_STANDALONE
+  const primaryCandidates = IS_STANDALONE
     ? standaloneImageCandidates(url)
     : buildImageCandidates(url, mode, customProxy);
+  const candidates = [...new Set([
+    ...primaryCandidates,
+    ...fallbackUrls.flatMap((fallback) => standaloneImageCandidates(fallback)),
+  ])];
+  const candidateKey = JSON.stringify(candidates);
   const [idx, setIdx] = useState(0);
 
   // 地址或加载方式变化时重置降级进度
-  useEffect(() => setIdx(0), [url, mode, customProxy]);
+  useEffect(() => setIdx(0), [url, mode, customProxy, candidateKey]);
   useEffect(() => {
     if (idx >= candidates.length) onExhausted?.();
     // 候选数组随 url/mode 变化，length 是充分的稳定信号

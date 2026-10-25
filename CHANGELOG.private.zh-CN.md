@@ -1,5 +1,13 @@
 # 私人 LibreTV 开发记录
 
+## 2.20.2-personal.11 · 2026-10-25
+
+开发分支：`fix/discovery-poster-fallback`。
+
+- 推荐封面保留原图与HTTPS备用地址，原图失败后尝试LibreTV已有两条图片镜像。
+- 严格匹配豆瓣图片主机名；刷新榜单可重新加载之前全部失败的封面。
+- 全部图片失败时仍可按片名找片，不增加后台或视频代理；详见[验证记录](docs/discovery-posters.zh-CN.md)。
+
 ## 2.20.2-personal.10 · 2026-10-25
 
 开发分支：`feat/vip-episode-titles`。
