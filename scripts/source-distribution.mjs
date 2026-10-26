@@ -9,7 +9,7 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const entries = [
   'src', 'public', 'docs', 'scripts', 'ios', 'capacitor.config.ts', '.github', 'LICENSE', 'README.md',
-  'CHANGELOG.private.zh-CN.md', 'UPSTREAM.md', 'package.json', 'package-lock.json',
+  'CHANGELOG.private.zh-CN.md', 'UPSTREAM.md', 'LOCAL_CODEX_HANDOFF.zh-CN.md', 'package.json', 'package-lock.json',
   'next.config.ts', 'next-env.d.ts', 'tsconfig.json', 'tailwind.config.ts',
   'postcss.config.mjs', 'eslint.config.mjs', 'vitest.config.ts', 'vercel.json',
   'Dockerfile', 'docker-compose.yml', '.dockerignore', '.gitignore', '.env.example',

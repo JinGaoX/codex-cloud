@@ -42,7 +42,7 @@ git switch -c feat/local-next origin/main
 - 当前应用版本：`2.20.2-personal.12`。
 - 精确已发布程序源码：`de498d70a4a3c46b7fcb0fdc981278ba13ba733e`。
 - 发布验证文档提交：`637baca50e751f65f68d05b58ffdde368c33493f`。
-- 此后的交接提交只增加说明和备份，不要误认为线上程序已随文档重新部署。
+- 此后的交接提交补充说明、备份和对应源码打包清单，不要误认为线上程序已重新部署。
 - 最新远端 `main` 是当前个人版；从 `origin/main` 新建工作分支。
 - 固定交接备份分支：`backup/local-codex-handoff-2026-10-26`。
 
