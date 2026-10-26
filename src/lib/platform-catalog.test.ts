@@ -62,11 +62,11 @@ describe('reviewed domestic platform selections', () => {
   it('respects the Pages deployment prefix for posters and preserves verified landscape artwork', async () => {
     vi.resetModules(); vi.stubEnv('NEXT_PUBLIC_APP_BASE_PATH', '/codex-cloud');
     try {
-      const module = await import('./platform-catalog');
-      const items = module.getPlatformItems('tencent', 'tv');
+      const catalogModule = await import('./platform-catalog');
+      const items = catalogModule.getPlatformItems('tencent', 'tv');
       expect(items.every((item) => item.bundledCover?.startsWith('/codex-cloud/posters/platform/'))).toBe(true);
       for (const item of items) {
-        const entry = module.PLATFORM_CATALOG.find((entry) => item.id.endsWith(entry.sourceUrl));
+        const entry = catalogModule.PLATFORM_CATALOG.find((entry) => item.id.endsWith(entry.sourceUrl));
         expect(item.coverShape).toBe(entry!.posterWidth > entry!.posterHeight ? 'landscape' : undefined);
       }
     } finally { vi.unstubAllEnvs(); vi.resetModules(); }
