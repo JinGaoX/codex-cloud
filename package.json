@@ -1,6 +1,6 @@
 {
   "name": "libretv",
-  "version": "2.20.2-personal.11",
+  "version": "2.20.2-personal.12",
   "private": true,
   "description": "免费在线视频搜索与观看平台（Next.js 重构版）",
   "license": "AGPL-3.0-or-later",
@@ -19,7 +19,8 @@
     "build:native": "node scripts/build-standalone.mjs --native",
     "native:ios": "npm run build:native && node scripts/prepare-native-ios.mjs",
     "native:ios:open": "cap open ios",
-    "preview:native": "node scripts/serve-standalone.mjs --native"
+    "preview:native": "node scripts/serve-standalone.mjs --native",
+    "catalog:posters": "node --use-env-proxy scripts/update-platform-posters.mjs"
   },
   "dependencies": {
     "@capacitor/core": "8.5.3",
@@ -50,6 +51,7 @@
     "eslint-config-next": "^15.5.25",
     "fake-indexeddb": "^6.2.6",
     "postcss": "^8.4.49",
+    "sharp": "0.35.4",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

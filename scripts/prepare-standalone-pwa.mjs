@@ -33,6 +33,7 @@ export function prepareStandalonePwa(directory = path.join(root, 'out'), basePat
     (/^_next\/static\/.*\.(?:js|css|woff2?|ttf)$/.test(name) ||
      /^(?:[^/]+\/)*[^/]+\.(?:html|txt)$/.test(name) ||
      /^icons\/[^/]+\.(?:png|svg|ico)$/.test(name) ||
+     /^posters\/platform\/[a-z0-9-]+\.webp$/.test(name) ||
      ['favicon.ico', 'player-poster.png', 'manifest.webmanifest'].includes(name)) &&
     !name.startsWith('api/') && !name.endsWith('.map')
   ).sort();

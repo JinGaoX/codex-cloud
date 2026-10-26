@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DISCOVERY_LISTS, fetchDiscoveryList, filterDiscoveryItems, type DiscoveryFilter, type DiscoveryItem, type DiscoveryListId } from '@/lib/discovery';
+import { PLATFORM_CHOICES, getPlatformItems, type PlatformId } from '@/lib/platform-catalog';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { SmartImage } from './smart-image';
@@ -29,18 +30,28 @@ export function DiscoverySection({ onPick }: { onPick: (title: string) => void }
 function DiscoveryContent({ onPick }: { onPick: (title: string) => void }) {
   const [type, setType] = useState<DiscoveryType>('movie');
   const [listId, setListId] = useState<DiscoveryListId>('douban_movie_weekly');
+  const [platform, setPlatform] = useState<PlatformId | null>('iqiyi');
   const [filter, setFilter] = useState<DiscoveryFilter>('all');
   const selectedType = TYPES.find((entry) => entry.id === type)!;
   const selected = DISCOVERY_LISTS.find((entry) => entry.id === listId)!;
+  const selectedPlatform = PLATFORM_CHOICES.find((entry) => entry.id === platform);
+  const source = selectedPlatform
+    ? `${selectedPlatform.label} · ${type === 'movie' ? '电影' : '电视剧'}精选`
+    : selected.source;
   const query = useQuery({
     queryKey: ['standalone-discovery', listId],
     queryFn: ({ signal }) => fetchDiscoveryList(listId, signal),
     staleTime: 10 * 60_000,
     gcTime: 60 * 60_000,
     retry: false,
+    enabled: platform === null,
   });
-  const items = filterDiscoveryItems(query.data?.items ?? [], filter);
+  const items = platform && type !== 'show'
+    ? getPlatformItems(platform, type)
+    : filterDiscoveryItems(query.data?.items ?? [], filter);
   const featured = items[0];
+  const landscapeGrid = items.length > 0 && items.every((item) => item.coverShape === 'landscape');
+  const contentKey = platform ? `${platform}:${type}` : String(query.dataUpdatedAt);
 
   return (
     <section aria-label="发现影视" className="vip-discovery mt-7 mb-8 min-w-0">
@@ -49,28 +60,38 @@ function DiscoveryContent({ onPick }: { onPick: (title: string) => void }) {
           {TYPES.map((entry) => (
             <button key={entry.id} type="button" aria-pressed={entry.id === type}
               className={cn('vip-category min-h-11 min-w-11 relative text-xl sm:text-2xl font-semibold tracking-wide transition-colors', entry.id === type ? 'text-content' : 'text-faint hover:text-content')}
-              onClick={() => { setType(entry.id); setListId(entry.lists[0]); setFilter('all'); }}>
+              onClick={() => {
+                setType(entry.id);
+                setListId(entry.lists[0]);
+                setFilter('all');
+                if (entry.id === 'show') setPlatform(null);
+              }}>
               {entry.label}
               {entry.id === type && <span aria-hidden="true" className="absolute bottom-0 left-0 w-5 h-0.5 rounded-full bg-accent" />}
             </button>
           ))}
         </div>
-        <button type="button" className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full text-muted hover:bg-chip hover:text-content disabled:opacity-40"
+        {platform === null && <button type="button" className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full text-muted hover:bg-chip hover:text-content disabled:opacity-40"
           aria-label="刷新榜单" disabled={query.isFetching} onClick={() => void query.refetch()}>
           <Icon name="refresh" className={cn('w-4 h-4', query.isFetching && 'animate-spin')} />
-        </button>
+        </button>}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-1 mb-4">
-        <div className="flex gap-1 overflow-x-auto max-w-full" role="group" aria-label="选择影视榜单">
+        <div className="flex min-w-0 gap-1 overflow-x-auto max-w-full" role="group" aria-label="选择影视分类">
+          {type !== 'show' && PLATFORM_CHOICES.map((entry) => (
+            <button key={entry.id} type="button" aria-pressed={entry.id === platform}
+              className={cn('min-h-11 shrink-0 px-3.5 rounded-full text-xs sm:text-sm transition-colors', entry.id === platform ? 'bg-accent/10 text-accent font-medium' : 'text-muted hover:bg-chip hover:text-content')}
+              onClick={() => { setPlatform(entry.id); setFilter('all'); }}>{entry.label}</button>
+          ))}
           {selectedType.lists.map((id) => {
             const list = DISCOVERY_LISTS.find((entry) => entry.id === id)!;
-            return <button key={id} type="button" aria-pressed={id === listId}
-              className={cn('min-h-11 shrink-0 px-3.5 rounded-full text-xs sm:text-sm transition-colors', id === listId ? 'bg-accent/10 text-accent font-medium' : 'text-muted hover:bg-chip hover:text-content')}
-              onClick={() => { setListId(id); setFilter('all'); }}>{list.label}</button>;
+            return <button key={id} type="button" aria-pressed={platform === null && id === listId}
+              className={cn('min-h-11 shrink-0 px-3.5 rounded-full text-xs sm:text-sm transition-colors', platform === null && id === listId ? 'bg-accent/10 text-accent font-medium' : 'text-muted hover:bg-chip hover:text-content')}
+              onClick={() => { setPlatform(null); setListId(id); setFilter('all'); }}>{list.label}</button>;
           })}
         </div>
-        {selected.filterable && <div className="flex gap-1" role="group" aria-label="筛选当前榜单">
+        {platform === null && selected.filterable && <div className="flex gap-1" role="group" aria-label="筛选当前榜单">
           {FILTERS.map((entry) => (
             <button key={entry.id} type="button" aria-pressed={filter === entry.id}
               className={cn('min-h-11 px-3 rounded-full text-xs transition-colors', filter === entry.id ? 'text-content font-semibold' : 'text-faint hover:text-content')}
@@ -79,20 +100,20 @@ function DiscoveryContent({ onPick }: { onPick: (title: string) => void }) {
         </div>}
       </div>
 
-      {query.isError && <div role="status" className="rounded-2xl border border-line bg-card px-5 py-4 mb-4 flex flex-wrap items-center justify-between gap-2">
+      {platform === null && query.isError && <div role="status" className="rounded-2xl border border-line bg-card px-5 py-4 mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">榜单暂时没加载出来</p>
         <button type="button" className="min-h-11 px-3 text-sm text-accent" disabled={query.isFetching} onClick={() => void query.refetch()}>
           {query.isFetching ? '正在重试…' : '重试榜单'}
         </button>
       </div>}
 
-      {query.isPending ? <DiscoverySkeleton /> : featured ? <>
-        <FeaturedFilm key={`${featured.id}:${query.dataUpdatedAt}`} item={featured} source={selected.source} onPick={onPick} />
-        {items.length > 1 && <div className="vip-poster-grid mt-5 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-x-3 gap-y-5 sm:gap-x-4" aria-label={selected.source}>
-          {items.slice(1).map((item) => <PosterCard key={`${item.id}:${query.dataUpdatedAt}`} item={item} onPick={onPick} />)}
+      {platform === null && query.isPending ? <DiscoverySkeleton /> : featured ? <>
+        <FeaturedFilm key={`${featured.id}:${contentKey}`} item={featured} source={source} onPick={onPick} />
+        {items.length > 1 && <div className={cn('vip-poster-grid mt-5 grid gap-x-3 gap-y-5 sm:gap-x-4', landscapeGrid ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6')} aria-label={source}>
+          {items.slice(1).map((item) => <PosterCard key={`${item.id}:${contentKey}`} item={item} onPick={onPick} />)}
         </div>}
-      </> : query.data ? <p className="text-sm text-muted py-14 text-center">
-        {filter === 'comedy' ? '这个榜单里暂时没有喜剧，换个榜单看看。' : filter === 'high-rated' ? '这个榜单里暂时没有8分以上的作品。' : '暂时还没有内容，稍后再来看看。'}
+      </> : platform || query.data ? <p className="text-sm text-muted py-14 text-center">
+        {platform ? '这个分类暂时没有内容。' : filter === 'comedy' ? '这个榜单里暂时没有喜剧，换个榜单看看。' : filter === 'high-rated' ? '这个榜单里暂时没有8分以上的作品。' : '暂时还没有内容，稍后再来看看。'}
       </p> : null}
     </section>
   );
@@ -100,8 +121,15 @@ function DiscoveryContent({ onPick }: { onPick: (title: string) => void }) {
 
 function FilmCover({ item, className, eager = false }: { item: DiscoveryItem; className: string; eager?: boolean }) {
   const [failed, setFailed] = useState(false);
+  const [bundledFailed, setBundledFailed] = useState(false);
   const fallbackKey = JSON.stringify(item.coverFallbacks ?? []);
-  useEffect(() => setFailed(false), [item.cover, fallbackKey]);
+  useEffect(() => { setFailed(false); setBundledFailed(false); }, [item.id, item.bundledCover, item.cover, fallbackKey]);
+  if (item.bundledCover && !bundledFailed) {
+    // This path comes from the bundled, reviewed catalog, not a user's API data.
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={item.bundledCover} alt="" className={className} loading={eager ? 'eager' : 'lazy'}
+      onError={() => setBundledFailed(true)} />;
+  }
   return item.cover && !failed ? <SmartImage url={item.cover} fallbackUrls={item.coverFallbacks} mode="direct" alt="" className={className}
     loading={eager ? 'eager' : 'lazy'} onExhausted={() => setFailed(true)} /> : <div className={cn(className, 'vip-cover-empty flex items-center justify-center')}>
     <svg aria-hidden="true" className="w-10 h-10 text-accent/40" viewBox="0 0 48 48" fill="none"><rect x="8" y="8" width="32" height="32" rx="8" stroke="currentColor" strokeWidth="1.5"/><path d="m21 17 11 7-11 7V17Z" fill="currentColor"/></svg>
@@ -132,7 +160,7 @@ function FeaturedFilm({ item, source, onPick }: { item: DiscoveryItem; source: s
         </span>
       </div>
       <div className="w-[100px] sm:w-[150px] lg:w-[180px] shrink-0 rotate-[5deg] rounded-xl shadow-[0_18px_45px_rgba(0,0,0,0.5)] overflow-hidden border border-white/10 mr-1 sm:mr-3 transition-transform duration-300 group-hover:rotate-[2deg]">
-        <FilmCover item={item} eager className="aspect-[2/3] w-full object-cover" />
+        <FilmCover item={item} eager className={cn('w-full object-cover', item.coverShape === 'landscape' ? 'aspect-video' : 'aspect-[2/3]')} />
       </div>
     </div>
   </button>;
@@ -141,7 +169,7 @@ function FeaturedFilm({ item, source, onPick }: { item: DiscoveryItem; source: s
 function PosterCard({ item, onPick }: { item: DiscoveryItem; onPick: (title: string) => void }) {
   return <button type="button" onClick={() => onPick(item.title)} aria-label={`搜索 ${item.title}`}
     className="text-left min-w-0 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-xl">
-    <div className="relative overflow-hidden rounded-xl bg-chip shadow-sm aspect-[2/3]">
+    <div className={cn('relative overflow-hidden rounded-xl bg-chip shadow-sm', item.coverShape === 'landscape' ? 'aspect-video' : 'aspect-[2/3]')}>
       <FilmCover item={item} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
       <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/65 to-transparent" />
       {item.rank !== undefined && <span aria-label={`原榜第${item.rank}名`} className="absolute top-2 left-2 text-white text-xs font-semibold tabular-nums drop-shadow-md">{String(item.rank).padStart(2, '0')}</span>}

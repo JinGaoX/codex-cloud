@@ -274,6 +274,8 @@ describe('standalone post-export preparation', () => {
         'index.html': shell, 'index.txt': 'rsc', 'watch/index.html': shell, 'watch/index.txt': 'watch-rsc',
         '_next/static/chunk.js': 'js', '_next/static/chunk.js.map': '{}',
         'icons/icon-192.png': 'icon', 'api/status.txt': 'private', 'fixture.mp4': 'media', 'source-code.tar.gz': 'source',
+        'posters/platform/verified-cover.webp': 'public poster', 'posters/private.webp': 'excluded',
+        'posters/platform/not-an-image.mp4': 'excluded media',
       })) {
         mkdirSync(resolve(directory, name, '..'), { recursive: true });
         writeFileSync(join(directory, name), content);
@@ -286,6 +288,9 @@ describe('standalone post-export preparation', () => {
       expect(generated).not.toContain('"url":"/fixture.mp4"');
       expect(generated).not.toContain('"url":"/source-code.tar.gz"');
       expect(generated).not.toContain('"url":"/_next/static/chunk.js.map"');
+      expect(generated).toContain('"url":"/posters/platform/verified-cover.webp"');
+      expect(generated).not.toContain('"url":"/posters/private.webp"');
+      expect(generated).not.toContain('"url":"/posters/platform/not-an-image.mp4"');
       expect(generated).not.toContain('__LIBRETV_STANDALONE_BUILD__');
     } finally { rmSync(directory, { recursive: true, force: true }); }
   });

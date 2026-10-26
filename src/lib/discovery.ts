@@ -15,6 +15,10 @@ export type DiscoveryListId = (typeof DISCOVERY_LISTS)[number]['id'];
 export type DiscoveryFilter = 'all' | 'high-rated' | 'comedy';
 
 export interface DiscoveryItem extends DoubanItem {
+  /** Build-bundled public poster path, already prefixed for the current deployment. */
+  bundledCover?: string;
+  /** Preserve a verified platform's wide artwork instead of pretending it is a portrait poster. */
+  coverShape?: 'landscape';
   /** Public poster alternatives only; never used for source API or video requests. */
   coverFallbacks?: string[];
   /** Original provider rank, never a locally invented rank. */
