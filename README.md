@@ -1,5 +1,7 @@
 # VIP影视
 
+> Windows本地Codex接手：[交接提示词与恢复步骤](LOCAL_CODEX_HANDOFF.zh-CN.md)。先恢复本地预览，再按用户指定任务开发。
+
 > **VIP影视 · iPhone 15 Pro Max 独立版：`2.20.2-personal.12`**。运行 `npm ci`、`npm run build:iphone`
 > 生成 `out/`，可用任意静态 HTTPS 分发；不需要运行 Node 后台。
 > 安装时下载程序，之后搜索/详情由手机直接访问用户配置的 HTTPS JSON API，视频直接播放。

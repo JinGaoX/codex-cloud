@@ -4,6 +4,10 @@
 
 仓库：https://github.com/JinGaoX/codex-cloud
 
+本地Codex接手请先读[交接提示词](../LOCAL_CODEX_HANDOFF.zh-CN.md)。
+固定备份分支为 `backup/local-codex-handoff-2026-10-26`，仅交接说明与备份，不重新部署线上程序。
+从GitHub恢复以 `origin/main` 为准；从离线bundle恢复请显式选择交接分支，旧云端本地`main`是上游基线。
+
 用户授权在无法新建仓库时，使用自己的任意空仓库。现有连接创建仓库返回权限不足，
 因此使用已经存在的 `codex-cloud`。上传前已通过完整 `git ls-remote` 确认仓库没有引用，
 而非仅依据仓库显示的 0 KB 判断。该仓库原本公开，备份时保留公开可见性。
