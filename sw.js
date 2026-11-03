@@ -1,6 +1,6 @@
 /* LibreTV PWA: intentionally excludes API, HTML/RSC, auth, posters and video data. */
 const CACHE_PREFIX = 'libretv-pwa-assets-';
-const CACHE_NAME = `${CACHE_PREFIX}v1`;
+const CACHE_NAME = `${CACHE_PREFIX}v2`;
 const OFFLINE_URL = '/offline.html';
 const MAX_ASSETS = 100;
 
