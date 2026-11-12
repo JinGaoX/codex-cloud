@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[4147],{4147:(e,h,n)=>{n.r(h),n.d(h,{Share:()=>r});let r=(0,n(4091).registerPlugin)("Share",{web:()=>n.e(7121).then(n.bind(n,7121)).then(e=>new e.ShareWeb)})}}]);
